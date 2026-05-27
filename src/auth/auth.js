@@ -152,7 +152,12 @@ async function handleSignup(event) {
   utility_state: utilityState,
   utility_phone: utilityPhone,
   utility_billing_email: utilityBillingEmail,
-  utility_address: utilityAddress
+  utility_support_email: utilitySupportEmail,
+  utility_website: utilityWebsite,
+  utility_address: utilityAddress,
+  utility_primary_color: utilityPrimaryColor,
+  utility_secondary_color: utilitySecondaryColor,
+  utility_logo_url: utilityLogoUrl
 });
 }
 
