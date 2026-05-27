@@ -93,7 +93,6 @@ async function handleSignup(event) {
   const fullName = getInputValue('signup-name');
   const email = getInputValue('signup-email');
   const password = getInputValue('signup-password');
-  const role = getInputValue('signup-role') || DEFAULT_ROLE;
 
   const utilityName = getInputValue('signup-utility-name');
   const legalName = getInputValue('signup-utility-legal-name');
@@ -102,20 +101,42 @@ async function handleSignup(event) {
   const utilityBillingEmail = getInputValue('signup-utility-billing-email');
   const utilityAddress = getInputValue('signup-utility-address');
   const utilityWebsite = getInputValue('signup-utility-website');
-    const utilitySupportEmail = getInputValue('signup-utility-support-email');
-    const utilityPrimaryColor = getInputValue('signup-utility-primary-color');
-    const utilitySecondaryColor = getInputValue('signup-utility-secondary-color');
-    const utilityLogoUrl = getInputValue('signup-utility-logo-url');
+  const utilitySupportEmail = getInputValue('signup-utility-support-email');
+  const utilityPrimaryColor = getInputValue('signup-utility-primary-color');
+  const utilitySecondaryColor = getInputValue('signup-utility-secondary-color');
+  const utilityLogoUrl = getInputValue('signup-utility-logo-url');
 
   if (!fullName || !email || !password || !utilityName) {
-  alert('Please complete all required fields.');
-  return;
-}
+    alert('Please complete all required fields.');
+    return;
+  }
 
   if (password.length < 8) {
     alert('Password must be at least 8 characters.');
     return;
   }
+
+  const pendingSignup = {
+    full_name: fullName,
+    role: 'admin',
+    utility_signup: true,
+    utility_name: utilityName,
+    utility_legal_name: legalName,
+    utility_state: utilityState,
+    utility_phone: utilityPhone,
+    utility_billing_email: utilityBillingEmail,
+    utility_support_email: utilitySupportEmail,
+    utility_website: utilityWebsite,
+    utility_address: utilityAddress,
+    utility_primary_color: utilityPrimaryColor,
+    utility_secondary_color: utilitySecondaryColor,
+    utility_logo_url: utilityLogoUrl
+  };
+
+  localStorage.setItem(
+    `ofori_pending_signup_${email.toLowerCase()}`,
+    JSON.stringify(pendingSignup)
+  );
 
   setAuthLoading(true);
 
@@ -125,7 +146,9 @@ async function handleSignup(event) {
     options: {
       data: {
         full_name: fullName,
-        role
+        role: 'admin',
+        utility_signup: true,
+        utility_name: utilityName
       }
     }
   });
@@ -137,28 +160,13 @@ async function handleSignup(event) {
     return;
   }
 
-  if (!data?.user || !data?.session) {
+  if (!data?.session) {
     alert('Account created. Please confirm your email, then sign in.');
     showAuthView();
     return;
   }
 
-  await handleAuthenticatedUser(data.user, {
-  full_name: fullName,
-  role: 'admin',
-  utility_signup: true,
-  utility_name: utilityName,
-  utility_legal_name: legalName,
-  utility_state: utilityState,
-  utility_phone: utilityPhone,
-  utility_billing_email: utilityBillingEmail,
-  utility_support_email: utilitySupportEmail,
-  utility_website: utilityWebsite,
-  utility_address: utilityAddress,
-  utility_primary_color: utilityPrimaryColor,
-  utility_secondary_color: utilitySecondaryColor,
-  utility_logo_url: utilityLogoUrl
-});
+  await handleAuthenticatedUser(data.user, pendingSignup);
 }
 
 async function handleLogout() {
@@ -171,6 +179,21 @@ async function handleLogout() {
 }
 
 async function handleAuthenticatedUser(user, extraProfileData = {}) {
+  const pendingKey = `ofori_pending_signup_${user.email.toLowerCase()}`;
+
+  const pendingSignupRaw = localStorage.getItem(pendingKey);
+
+  if (!extraProfileData.utility_signup && pendingSignupRaw) {
+    try {
+      extraProfileData = {
+        ...JSON.parse(pendingSignupRaw),
+        ...extraProfileData
+      };
+    } catch {
+      localStorage.removeItem(pendingKey);
+    }
+  }
+
   try {
     authState.user = user;
 
@@ -180,8 +203,11 @@ async function handleAuthenticatedUser(user, extraProfileData = {}) {
     const utility = await getUtilityById(profile.utility_id);
     authState.utility = utility;
 
+    localStorage.removeItem(pendingKey);
+
     setUserLabel(profile.full_name || user.email);
     showAppView();
+
     window.dispatchEvent(new CustomEvent('ofori:auth-ready'));
   } catch (error) {
     console.error('Authenticated user setup failed:', error);
@@ -193,10 +219,9 @@ async function handleAuthenticatedUser(user, extraProfileData = {}) {
       'Login worked, but the application profile could not be loaded. ' +
       error.message
     );
-
-    showAuthView();
   }
 }
+
 
 async function getOrCreateProfile(user, extra = {}) {
   const { data: existingProfile, error: selectError } = await supabase
