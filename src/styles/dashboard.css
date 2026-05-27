@@ -1,0 +1,225 @@
+.dashboard-grid {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.dashboard-shell-card {
+  padding: 0;
+  overflow: visible;
+}
+
+.dashboard-hero {
+  display: none;
+}
+
+.dashboard-content {
+  padding: 0 !important;
+}
+
+.dashboard-home {
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Workspace */
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  gap: 0 !important;
+  column-gap: 0 !important;
+  align-items: start;
+  width: 100%;
+}
+
+.workspace-sidebar {
+  width: 145px;
+  min-height: calc(100vh - 86px);
+  max-height: calc(100vh - 86px);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px 0 0 14px;
+  padding: 0.28rem;
+  position: sticky;
+  top: 0.5rem;
+  overflow-y: auto;
+}
+
+.workspace-main {
+  min-width: 0;
+  width: 100%;
+   padding-left: 0.2rem !important;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.sidebar-btn,
+.sidebar-tab-btn {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  background: transparent;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 0.58rem 0.52rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.12;
+  transition: 0.18s ease;
+}
+
+.sidebar-btn:hover,
+.sidebar-tab-btn:hover {
+  background: #ecfeff;
+  color: var(--primary-dark);
+}
+
+.sidebar-btn.active,
+.sidebar-tab-btn.active {
+  background: linear-gradient(135deg, var(--primary-dark), var(--accent));
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(8, 145, 178, 0.18);
+  outline: 2px solid #020617;
+}
+
+/* Dashboard KPIs */
+
+.dashboard-summary,
+.dashboard-summary.compact-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(110px, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.65rem;
+}
+
+.summary-card {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.68rem 0.78rem;
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.summary-card span {
+  color: #64748b;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.18rem;
+}
+
+.summary-card strong {
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+/* Offline */
+
+.offline-status {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.72rem 0.9rem;
+  margin-bottom: 0.65rem;
+  background: var(--surface-soft);
+}
+
+.offline-status.online strong {
+  color: var(--success);
+}
+
+.offline-status.offline strong {
+  color: var(--danger);
+}
+
+#offline-status-root > * {
+  margin-bottom: 0.65rem;
+}
+
+.workspace-main .card,
+.workspace-main .section-card {
+  width: 100%;
+}
+
+.workspace-main .section-card:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-summary,
+  .dashboard-summary.compact-kpis {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-sidebar {
+    position: static;
+    width: 100%;
+    min-height: auto;
+    max-height: none;
+    border-radius: 14px;
+    margin-bottom: 0.6rem;
+  }
+
+  .workspace-main {
+    padding-left: 0 !important;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .sidebar-btn,
+  .sidebar-tab-btn {
+    white-space: nowrap;
+    width: auto;
+    min-width: max-content;
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-summary,
+  .dashboard-summary.compact-kpis {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .offline-status {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebar-btn,
+.sidebar-tab-btn {
+  font-size: 0.82rem;
+  font-weight: 900;
+  border: 2px solid #020617;
+  background: #fff;
+  text-align: center;
+}
+
+.sidebar-btn.active,
+.sidebar-tab-btn.active {
+  background: linear-gradient(135deg, var(--primary-dark), var(--accent));
+  color: #fff;
+}

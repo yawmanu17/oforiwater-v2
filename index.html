@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>OFORI Water Platform</title>
+  <meta name="description" content="Utility Operations, NRW, Meter Reading, Billing and GIS Platform" />
+  <meta name="theme-color" content="#0f766e" />
+
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+</head>
+
+<body>
+  <noscript>OFORI Water Platform requires JavaScript.</noscript>
+
+  <div id="auth-modal" class="auth-page" hidden>
+    <div class="card auth-card">
+      <div class="brand-header">
+        <img src="/assets/logo.png" alt="OFORI Platforms Logo" class="brand-logo" />
+        <h1>OFORI Water Platform</h1>
+        <p>Utility Operations, NRW, Meter Reading & Billing</p>
+      </div>
+
+      <div id="login-form">
+        <form id="login-form-element">
+          <label>Email</label>
+          <input id="login-email" type="email" required />
+
+          <label>Password</label>
+          <input id="login-password" type="password" required />
+
+          <button class="btn-primary" type="submit">Sign In</button>
+        </form>
+
+        <p>No account? <button id="show-signup" type="button">Create account</button></p>
+      </div>
+
+      <div id="signup-form" hidden>
+        <form id="signup-form-element">
+          <label>Full Name</label>
+          <input id="signup-name" type="text" required />
+
+          <label>Email</label>
+          <input id="signup-email" type="email" required />
+
+          <label>Password</label>
+          <input id="signup-password" type="password" minlength="8" required />
+
+          <label>Utility Name</label>
+          <input id="signup-utility-name" type="text" required />
+
+          <label>Legal Name</label>
+          <input id="signup-utility-legal-name" type="text" />
+
+          <label>State</label>
+          <input id="signup-utility-state" type="text" />
+
+          <label>Phone</label>
+          <input id="signup-utility-phone" type="text" />
+
+         <label>Billing Email</label>
+              <input id="signup-utility-billing-email" type="email" />
+
+              <label>Support Email</label>
+              <input id="signup-utility-support-email" type="email" />
+
+              <label>Website</label>
+              <input id="signup-utility-website" type="url" />
+
+              <label>Primary Color</label>
+              <input
+                id="signup-utility-primary-color"
+                type="color"
+                value="#06b6d4"
+              />
+
+              <label>Secondary Color</label>
+              <input
+                id="signup-utility-secondary-color"
+                type="color"
+                value="#1a4b66"
+              />
+
+              <label>Logo URL</label>
+              <input
+                id="signup-utility-logo-url"
+                type="text"
+                placeholder="https://yourdomain.com/logo.png"
+              />
+
+              <label>Address</label>
+              <input id="signup-utility-address" type="text" />
+
+          <input id="signup-role" value="admin" hidden />
+  
+          <button class="btn-primary" type="submit">Create Account</button>
+        </form>
+
+        <p>Already have an account? <button id="show-login" type="button">Sign In</button></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="main-app" class="app-layout" hidden>
+    <header class="app-header">
+      <div class="app-brand">
+        <img src="/assets/favicon.png" alt="OFORI Icon" class="app-icon" />
+        <div>
+          <h1>OFORI Water Platform</h1>
+          <p> Field-to-Desk Utility Operations • Welcome, <strong id="user-name">User</strong></p>
+        </div>
+      </div>
+
+      <button id="logout-btn">Sign Out</button>
+    </header>
+
+   <main class="dashboard-grid">
+  <div class="workspace-layout">
+    <aside class="workspace-sidebar">
+      <div id="sidebar-nav-root"></div>
+    </aside>
+
+    <section class="workspace-main">
+      <div id="utility-setup-root"></div>
+    </section>
+  </div>
+</main>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

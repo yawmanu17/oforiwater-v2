@@ -1,0 +1,232 @@
+.map-toolbar {
+  align-items: flex-start;
+}
+
+.map-legend {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: 0.45rem 0 0.7rem;
+}
+
+.map-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.utility-map {
+  width: 100%;
+  height: 560px;
+  min-height: 560px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.map-side-panel {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+  padding: 0.9rem;
+  min-height: 560px;
+  max-height: 560px;
+  overflow: auto;
+}
+
+.map-side-panel.empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.leaflet-popup-content {
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.leaflet-control-layers {
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
+}
+
+.pipeline-arrow-marker {
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 900;
+  text-shadow: 0 1px 3px #fff;
+}
+
+@media (max-width: 1100px) {
+  .map-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .utility-map,
+  .map-side-panel {
+    min-height: 460px;
+    height: 460px;
+    max-height: none;
+  }
+}
+
+.leaflet-control-layers {
+  border-radius: 14px !important;
+  padding: 0.35rem !important;
+  font-size: 0.76rem !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12) !important;
+}
+
+.leaflet-control-layers label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  font-size: 0.76rem !important;
+  font-weight: 650 !important;
+  margin: 0.2rem 0 !important;
+}
+
+.leaflet-control-layers input {
+  width: 14px !important;
+  height: 14px !important;
+  min-height: 14px !important;
+  margin: 0 !important;
+}
+
+.utility-map.draw-mode,
+.utility-map.draw-mode * {
+  cursor: crosshair !important;
+}
+
+.utility-map.extend-mode,
+.utility-map.extend-mode * {
+  cursor: copy !important;
+}
+
+.utility-map.select-mode,
+.utility-map.select-mode * {
+  cursor: pointer !important;
+}
+
+.map-tool-active {
+  background: linear-gradient(135deg, var(--ofori-steel, #143447), var(--ofori-blue, #0e7490), var(--ofori-cyan, #06b6d4)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 20px rgba(6, 182, 212, 0.22) !important;
+}
+
+.workspace-main-panel .utility-map {
+  width: 100%;
+  height: calc(100vh - 340px);
+  min-height: 720px;
+}
+
+.workspace-inspector {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-inspector.empty {
+  opacity: 0.9;
+}
+
+.workspace-inspector-body {
+  flex: 1;
+}
+
+.pipeline-arrow-marker {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0e7490;
+  text-shadow:
+    0 0 4px #fff,
+    0 0 8px #fff;
+}
+
+.map-tool-active {
+  background: linear-gradient(135deg, #143447, #0e7490, #06b6d4) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.utility-map.draw-mode {
+  cursor: crosshair;
+}
+
+.utility-map.extend-mode {
+  cursor: copy;
+}
+
+.utility-map.select-mode {
+  cursor: default;
+}
+
+.gis-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.55rem;
+  background: #ffffff;
+  border: 1px solid rgba(6, 182, 212, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.gis-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.gis-tool-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(15, 23, 42, 0.1);
+}
+
+.gis-tab {
+  border: 1px solid rgba(6, 182, 212, 0.18);
+  background: #fff;
+  color: #143447;
+  border-radius: 10px;
+  padding: 0.42rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  min-height: 34px;
+}
+
+.gis-tab.active {
+  background: linear-gradient(135deg, #143447, #0e7490, #06b6d4);
+  color: #fff;
+  border-color: transparent;
+}
+
+.gis-tool-btn {
+  width: 36px;
+  height: 34px;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border-radius: 10px;
+  border: 1px solid rgba(6, 182, 212, 0.18);
+  background: #fff;
+  color: #143447;
+  font-size: 1rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gis-tool-btn.primary,
+.gis-tool-btn.map-tool-active {
+  background: linear-gradient(135deg, #143447, #0e7490, #06b6d4) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 18px rgba(6, 182, 212, 0.2);
+}
