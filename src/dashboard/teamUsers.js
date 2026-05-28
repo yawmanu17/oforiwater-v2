@@ -186,7 +186,7 @@ function wireEvents(rootId) {
       return;
     }
 
-      const duplicateInvite = invites.find((invite) =>
+    const duplicateInvite = invites.find((invite) =>
       invite.status === 'pending' &&
       invite.email.toLowerCase() === email.toLowerCase()
     );
@@ -195,41 +195,31 @@ function wireEvents(rootId) {
       alert('A pending invite already exists for this email.');
       return;
     }
-    
-    await createStaffInvite({
-    utility_id: authState.utility.id,
-    email,
-    full_name: fullName,
-    role,
-    status: 'pending',
-    invited_by: authState.profile.id
-    });
 
     try {
-  await createStaffInvite({
-    utility_id: authState.utility.id,
-    email,
-    full_name: fullName,
-    role,
-    status: 'pending',
-    invited_by: authState.profile.id
-  });
+      await createStaffInvite({
+        utility_id: authState.utility.id,
+        email,
+        full_name: fullName,
+        role,
+        status: 'pending',
+        invited_by: authState.profile.id
+      });
 
-  await sendStaffInviteEmail({
-    email,
-    fullName,
-    role,
-    utilityName: authState.utility.name
-  });
+      await sendStaffInviteEmail({
+        email,
+        fullName,
+        role,
+        utilityName: authState.utility.name
+      });
 
-  alert('Staff invite created and email sent.');
+      alert('Staff invite created and email sent.');
 
-  await initTeamUsersUi(rootId);
-} catch (error) {
-
-  console.error('Invite failed:', error);
-  alert(error.message || 'Staff invite failed.');
-}
+      await initTeamUsersUi(rootId);
+    } catch (error) {
+      console.error('Invite failed:', error);
+      alert(error.message || 'Staff invite failed.');
+    }
   });
 
   document.querySelectorAll('.toggle-user-btn').forEach((button) => {
