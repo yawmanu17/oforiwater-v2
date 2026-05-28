@@ -5,6 +5,7 @@ import {
   createStaffInvite,
   updateProfile
 } from '../supabase/profiles.js';
+import { sendStaffInviteEmail } from '../supabase/email.js';
 
 let profiles = [];
 let invites = [];
@@ -186,13 +187,22 @@ function wireEvents(rootId) {
     }
 
     await createStaffInvite({
-      utility_id: authState.utility.id,
-      email,
-      full_name: fullName,
-      role,
-      status: 'pending',
-      invited_by: authState.profile.id
+    utility_id: authState.utility.id,
+    email,
+    full_name: fullName,
+    role,
+    status: 'pending',
+    invited_by: authState.profile.id
     });
+
+    await sendStaffInviteEmail({
+    email,
+    fullName,
+    role,
+    utilityName: authState.utility.name
+    });
+
+    alert('Staff invite created and email sent.');
 
     alert('Staff invite created. Ask the staff member to sign up with that company email.');
 
