@@ -364,33 +364,36 @@ async function createUtilityForSignup(extra = {}) {
     throw new Error('Utility name is required.');
   }
 
+  const utilityId = crypto.randomUUID();
+
   const slugBase = utilityName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
-  const { data, error } = await supabase
+  const payload = {
+    id: utilityId,
+    name: utilityName,
+    legal_name: extra.utility_legal_name || utilityName,
+    slug: `${slugBase}-${Date.now()}`,
+    state: extra.utility_state || '',
+    phone: extra.utility_phone || '',
+    billing_email: extra.utility_billing_email || '',
+    support_email: extra.utility_support_email || '',
+    website: extra.utility_website || '',
+    address: extra.utility_address || '',
+    primary_color: extra.utility_primary_color || '#06b6d4',
+    secondary_color: extra.utility_secondary_color || '#1a4b66',
+    logo_url: extra.utility_logo_url || ''
+  };
+
+  const { error } = await supabase
     .from('utilities')
-    .insert({
-      name: utilityName,
-      legal_name: extra.utility_legal_name || utilityName,
-      slug: `${slugBase}-${Date.now()}`,
-      state: extra.utility_state || '',
-      phone: extra.utility_phone || '',
-      billing_email: extra.utility_billing_email || '',
-      support_email: extra.utility_support_email || '',
-      website: extra.utility_website || '',
-      address: extra.utility_address || '',
-      primary_color: extra.utility_primary_color || '#06b6d4',
-      secondary_color: extra.utility_secondary_color || '#1a4b66',
-      logo_url: extra.utility_logo_url || ''
-    })
-    .select('*')
-    .single();
+    .insert(payload);
 
   if (error) throw error;
 
-  return data;
+  return payload;
 }
 
 async function getUtilityById(utilityId) {
