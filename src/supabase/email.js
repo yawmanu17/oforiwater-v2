@@ -2,7 +2,7 @@ import { supabase } from './client.js';
 
 export async function sendStaffInviteEmail({
   email,
- fullName,
+  fullName,
   role,
   utilityName
 }) {
