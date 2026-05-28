@@ -29,9 +29,12 @@ export async function getPendingInviteByEmail(email) {
     .select('*')
     .eq('status', 'pending')
     .ilike('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error) throw error;
+
   return data;
 }
 
