@@ -1,4 +1,5 @@
 import { authState } from '../auth/auth.js';
+
 import {
   getProfilesByUtility,
   getStaffInvitesByUtility,
@@ -6,6 +7,7 @@ import {
   updateProfile,
   cancelStaffInvite
 } from '../supabase/profiles.js';
+
 import { sendStaffInviteEmail } from '../supabase/email.js';
 
 let profiles = [];
@@ -23,10 +25,9 @@ export async function initTeamUsersUi(rootId = 'dashboard-module-root') {
     <section class="module-page">
       <div class="module-toolbar">
         <div class="module-title-block">
+          <div class="module-eyebrow">Utility Access Control</div>
           <h2>Team / Users</h2>
-          <p>
-            Invite staff using company email addresses and assign access roles for utility operations.
-          </p>
+          <p>Invite staff using company emails and assign role-based access.</p>
         </div>
       </div>
 
@@ -53,7 +54,7 @@ export async function initTeamUsersUi(rootId = 'dashboard-module-root') {
             <div>
               <h3 class="module-panel-title">Invite Staff</h3>
               <p class="module-panel-subtitle">
-                Staff will sign up using their own company email and password.
+                Staff will sign up with their own email and password.
               </p>
             </div>
           </div>
@@ -87,23 +88,6 @@ export async function initTeamUsersUi(rootId = 'dashboard-module-root') {
           <div style="margin-top:1rem;">
             <h3 class="module-panel-title">Pending Invites</h3>
             <div id="invite-list">${inviteListHtml()}</div>
-            <div class="button-row">
-                <button
-                  class="btn-secondary resend-invite-btn"
-                  type="button"
-                  data-invite-id="${safe(invite.id)}"
-                >
-                  Resend Invite
-                </button>
-
-                <button
-                  class="btn-secondary danger-btn cancel-invite-btn"
-                  type="button"
-                  data-invite-id="${safe(invite.id)}"
-                >
-                  Cancel
-                </button>
-              </div>
           </div>
         </section>
 
@@ -186,6 +170,7 @@ function staffListHtml() {
       ${profiles.map((profile) => `
         <div class="mini-card">
           <strong>${safe(profile.full_name || profile.email)}</strong><br />
+
           <small>
             ${safe(profile.email)}
             • ${roleLabel(profile.role)}
@@ -260,12 +245,13 @@ function wireEvents(rootId) {
     }
   });
 
-    document.querySelectorAll('.resend-invite-btn').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const invite = invites.find((item) => item.id === button.dataset.inviteId);
+  document.querySelectorAll('.resend-invite-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const invite = invites.find((item) => item.id === button.dataset.inviteId);
 
-        if (!invite) return;
+      if (!invite) return;
 
+      try {
         await sendStaffInviteEmail({
           email: invite.email,
           fullName: invite.full_name,
@@ -274,18 +260,22 @@ function wireEvents(rootId) {
         });
 
         alert('Invite email resent.');
-      });
+      } catch (error) {
+        console.error('Resend invite failed:', error);
+        alert(error.message || 'Could not resend invite.');
+      }
     });
+  });
 
-    document.querySelectorAll('.cancel-invite-btn').forEach((button) => {
-      button.addEventListener('click', async () => {
-        if (!confirm('Cancel this pending invite?')) return;
+  document.querySelectorAll('.cancel-invite-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      if (!confirm('Cancel this pending invite?')) return;
 
-        await cancelStaffInvite(button.dataset.inviteId);
+      await cancelStaffInvite(button.dataset.inviteId);
 
-        await initTeamUsersUi(rootId);
-      });
+      await initTeamUsersUi(rootId);
     });
+  });
 
   document.querySelectorAll('.toggle-user-btn').forEach((button) => {
     button.addEventListener('click', async () => {
