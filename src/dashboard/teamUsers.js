@@ -147,9 +147,29 @@ function inviteListHtml() {
       ${pending.map((invite) => `
         <div class="mini-card">
           <strong>${safe(invite.full_name || invite.email)}</strong><br />
+
           <small>
-            ${safe(invite.email)} • ${roleLabel(invite.role)}
+            ${safe(invite.email)}
+            • ${roleLabel(invite.role)}
           </small>
+
+          <div class="button-row" style="margin-top:.65rem;">
+            <button
+              class="btn-secondary resend-invite-btn"
+              type="button"
+              data-invite-id="${safe(invite.id)}"
+            >
+              Resend Invite
+            </button>
+
+            <button
+              class="btn-secondary danger-btn cancel-invite-btn"
+              type="button"
+              data-invite-id="${safe(invite.id)}"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       `).join('')}
     </div>
