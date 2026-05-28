@@ -186,6 +186,16 @@ function wireEvents(rootId) {
       return;
     }
 
+      const duplicateInvite = invites.find((invite) =>
+      invite.status === 'pending' &&
+      invite.email.toLowerCase() === email.toLowerCase()
+    );
+
+    if (duplicateInvite) {
+      alert('A pending invite already exists for this email.');
+      return;
+    }
+    
     await createStaffInvite({
     utility_id: authState.utility.id,
     email,
