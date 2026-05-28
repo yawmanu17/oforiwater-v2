@@ -3,7 +3,8 @@ import {
   getProfilesByUtility,
   getStaffInvitesByUtility,
   createStaffInvite,
-  updateProfile
+  updateProfile,
+  cancelStaffInvite
 } from '../supabase/profiles.js';
 import { sendStaffInviteEmail } from '../supabase/email.js';
 
@@ -86,6 +87,23 @@ export async function initTeamUsersUi(rootId = 'dashboard-module-root') {
           <div style="margin-top:1rem;">
             <h3 class="module-panel-title">Pending Invites</h3>
             <div id="invite-list">${inviteListHtml()}</div>
+            <div class="button-row">
+                <button
+                  class="btn-secondary resend-invite-btn"
+                  type="button"
+                  data-invite-id="${safe(invite.id)}"
+                >
+                  Resend Invite
+                </button>
+
+                <button
+                  class="btn-secondary danger-btn cancel-invite-btn"
+                  type="button"
+                  data-invite-id="${safe(invite.id)}"
+                >
+                  Cancel
+                </button>
+              </div>
           </div>
         </section>
 
@@ -221,6 +239,33 @@ function wireEvents(rootId) {
       alert(error.message || 'Staff invite failed.');
     }
   });
+
+    document.querySelectorAll('.resend-invite-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const invite = invites.find((item) => item.id === button.dataset.inviteId);
+
+        if (!invite) return;
+
+        await sendStaffInviteEmail({
+          email: invite.email,
+          fullName: invite.full_name,
+          role: invite.role,
+          utilityName: authState.utility.name
+        });
+
+        alert('Invite email resent.');
+      });
+    });
+
+    document.querySelectorAll('.cancel-invite-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        if (!confirm('Cancel this pending invite?')) return;
+
+        await cancelStaffInvite(button.dataset.inviteId);
+
+        await initTeamUsersUi(rootId);
+      });
+    });
 
   document.querySelectorAll('.toggle-user-btn').forEach((button) => {
     button.addEventListener('click', async () => {

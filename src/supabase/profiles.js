@@ -49,6 +49,20 @@ export async function createStaffInvite(payload) {
   return data;
 }
 
+export async function cancelStaffInvite(inviteId) {
+  const { data, error } = await supabase
+    .from('staff_invites')
+    .update({
+      status: 'cancelled'
+    })
+    .eq('id', inviteId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getStaffInvitesByUtility(utilityId) {
   const { data, error } = await supabase
     .from('staff_invites')
