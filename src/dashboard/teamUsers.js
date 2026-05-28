@@ -195,18 +195,31 @@ function wireEvents(rootId) {
     invited_by: authState.profile.id
     });
 
-    await sendStaffInviteEmail({
+    try {
+  await createStaffInvite({
+    utility_id: authState.utility.id,
+    email,
+    full_name: fullName,
+    role,
+    status: 'pending',
+    invited_by: authState.profile.id
+  });
+
+  await sendStaffInviteEmail({
     email,
     fullName,
     role,
     utilityName: authState.utility.name
-    });
+  });
 
-    alert('Staff invite created and email sent.');
+  alert('Staff invite created and email sent.');
 
-    alert('Staff invite created. Ask the staff member to sign up with that company email.');
+  await initTeamUsersUi(rootId);
+} catch (error) {
 
-    await initTeamUsersUi(rootId);
+  console.error('Invite failed:', error);
+  alert(error.message || 'Staff invite failed.');
+}
   });
 
   document.querySelectorAll('.toggle-user-btn').forEach((button) => {
