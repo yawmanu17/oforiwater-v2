@@ -5,6 +5,7 @@ import {
   showAppView,
   setUserLabel
 } from '../appShell.js';
+
 import {
   getPendingInviteByEmail,
   markInviteAccepted
@@ -33,28 +34,24 @@ export async function initAuth() {
   await handleAuthenticatedUser(data.session.user);
 
   supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT' || !session?.user) {
-    resetAuthState();
-    showAuthView();
-    return;
-  }
+    if (event === 'SIGNED_OUT' || !session?.user) {
+      resetAuthState();
+      showAuthView();
+      return;
+    }
 
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-    setTimeout(() => {
-      handleAuthenticatedUser(session.user);
-    }, 0);
-  }
-});
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      setTimeout(() => {
+        handleAuthenticatedUser(session.user);
+      }, 0);
+    }
+  });
 }
 
 function wireAuthForms() {
-  const loginForm = document.getElementById('login-form-element');
-  const signupForm = document.getElementById('signup-form-element');
-  const logoutBtn = document.getElementById('logout-btn');
-
-  loginForm?.addEventListener('submit', handleLogin);
-  signupForm?.addEventListener('submit', handleSignup);
-  logoutBtn?.addEventListener('click', handleLogout);
+  document.getElementById('login-form-element')?.addEventListener('submit', handleLogin);
+  document.getElementById('signup-form-element')?.addEventListener('submit', handleSignup);
+  document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
 }
 
 async function handleLogin(event) {
@@ -106,8 +103,8 @@ async function handleSignup(event) {
   const utilitySecondaryColor = getInputValue('signup-utility-secondary-color');
   const utilityLogoUrl = getInputValue('signup-utility-logo-url');
 
-  if (!fullName || !email || !password || !utilityName) {
-    alert('Please complete all required fields.');
+  if (!fullName || !email || !password) {
+    alert('Please enter your name, email, and password.');
     return;
   }
 
@@ -116,22 +113,30 @@ async function handleSignup(event) {
     return;
   }
 
-  const pendingSignup = {
-    full_name: fullName,
-    role: 'admin',
-    utility_signup: true,
-    utility_name: utilityName,
-    utility_legal_name: legalName,
-    utility_state: utilityState,
-    utility_phone: utilityPhone,
-    utility_billing_email: utilityBillingEmail,
-    utility_support_email: utilitySupportEmail,
-    utility_website: utilityWebsite,
-    utility_address: utilityAddress,
-    utility_primary_color: utilityPrimaryColor,
-    utility_secondary_color: utilitySecondaryColor,
-    utility_logo_url: utilityLogoUrl
-  };
+  const isUtilityAdminSignup = Boolean(utilityName);
+
+  const pendingSignup = isUtilityAdminSignup
+    ? {
+        full_name: fullName,
+        role: 'admin',
+        utility_signup: true,
+        utility_name: utilityName,
+        utility_legal_name: legalName,
+        utility_state: utilityState,
+        utility_phone: utilityPhone,
+        utility_billing_email: utilityBillingEmail,
+        utility_support_email: utilitySupportEmail,
+        utility_website: utilityWebsite,
+        utility_address: utilityAddress,
+        utility_primary_color: utilityPrimaryColor,
+        utility_secondary_color: utilitySecondaryColor,
+        utility_logo_url: utilityLogoUrl
+      }
+    : {
+        full_name: fullName,
+        role: DEFAULT_ROLE,
+        utility_signup: false
+      };
 
   localStorage.setItem(
     `ofori_pending_signup_${email.toLowerCase()}`,
@@ -146,9 +151,9 @@ async function handleSignup(event) {
     options: {
       data: {
         full_name: fullName,
-        role: 'admin',
-        utility_signup: true,
-        utility_name: utilityName
+        role: pendingSignup.role,
+        utility_signup: pendingSignup.utility_signup,
+        utility_name: utilityName || ''
       }
     }
   });
@@ -180,7 +185,6 @@ async function handleLogout() {
 
 async function handleAuthenticatedUser(user, extraProfileData = {}) {
   const pendingKey = `ofori_pending_signup_${user.email.toLowerCase()}`;
-
   const pendingSignupRaw = localStorage.getItem(pendingKey);
 
   if (!extraProfileData.utility_signup && pendingSignupRaw) {
@@ -222,7 +226,6 @@ async function handleAuthenticatedUser(user, extraProfileData = {}) {
   }
 }
 
-
 async function getOrCreateProfile(user, extra = {}) {
   const { data: existingProfile, error: selectError } = await supabase
     .from('profiles')
@@ -230,25 +233,25 @@ async function getOrCreateProfile(user, extra = {}) {
     .eq('id', user.id)
     .maybeSingle();
 
-  if (selectError) {
-    throw selectError;
-  }
+  if (selectError) throw selectError;
 
-  if (existingProfile) {
-    return existingProfile;
-  }
+  if (existingProfile) return existingProfile;
 
   const pendingInvite = await getPendingInviteByEmail(user.email);
 
+  if (!pendingInvite && !extra.utility_signup) {
+    throw new Error(
+      'No staff invite found for this email. Please ask your utility admin to invite you first, or enter utility details to create a new utility account.'
+    );
+  }
+
   const utilityId = pendingInvite
     ? pendingInvite.utility_id
-    : extra.utility_signup
-      ? (await createUtilityForSignup(extra)).id
-      : await getDefaultUtilityId();
+    : (await createUtilityForSignup(extra)).id;
 
   const role = pendingInvite
     ? pendingInvite.role
-    : extra.role || user.user_metadata?.role || DEFAULT_ROLE;
+    : extra.role || user.user_metadata?.role || 'admin';
 
   const payload = {
     id: user.id,
@@ -269,9 +272,7 @@ async function getOrCreateProfile(user, extra = {}) {
     .select('*')
     .single();
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   if (pendingInvite) {
     await markInviteAccepted(pendingInvite.id);
@@ -293,57 +294,27 @@ async function createUtilityForSignup(extra = {}) {
     .replace(/(^-|-$)/g, '');
 
   const { data, error } = await supabase
-  .from('utilities')
-  .insert({
-    name: utilityName,
-    legal_name: extra.utility_legal_name || utilityName,
-    slug: `${slugBase}-${Date.now()}`,
-
-    state: extra.utility_state || '',
-    phone: extra.utility_phone || '',
-
-    billing_email: extra.utility_billing_email || '',
-    support_email: extra.utility_support_email || '',
-
-    website: extra.utility_website || '',
-
-    address: extra.utility_address || '',
-
-    primary_color:
-      extra.utility_primary_color || '#06b6d4',
-
-    secondary_color:
-      extra.utility_secondary_color || '#1a4b66',
-
-    logo_url:
-      extra.utility_logo_url || ''
-  })
-  .select('*')
-  .single();
+    .from('utilities')
+    .insert({
+      name: utilityName,
+      legal_name: extra.utility_legal_name || utilityName,
+      slug: `${slugBase}-${Date.now()}`,
+      state: extra.utility_state || '',
+      phone: extra.utility_phone || '',
+      billing_email: extra.utility_billing_email || '',
+      support_email: extra.utility_support_email || '',
+      website: extra.utility_website || '',
+      address: extra.utility_address || '',
+      primary_color: extra.utility_primary_color || '#06b6d4',
+      secondary_color: extra.utility_secondary_color || '#1a4b66',
+      logo_url: extra.utility_logo_url || ''
+    })
+    .select('*')
+    .single();
 
   if (error) throw error;
 
   return data;
-}
-
-async function getDefaultUtilityId() {
-  const { data, error } = await supabase
-    .from('utilities')
-    .select('id')
-    .eq('slug', 'ofori-demo')
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data?.id) {
-    throw new Error(
-      'Default utility not found. Please insert the OFORI demo utility in Supabase first.'
-    );
-  }
-
-  return data.id;
 }
 
 async function getUtilityById(utilityId) {
@@ -357,9 +328,7 @@ async function getUtilityById(utilityId) {
     .eq('id', utilityId)
     .single();
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 
   return data;
 }
@@ -373,16 +342,13 @@ function resetAuthState() {
 function setAuthLoading(isLoading) {
   authState.loading = isLoading;
 
-  const buttons = document.querySelectorAll(
-    '#login-form-element button, #signup-form-element button, #logout-btn'
-  );
-
-  buttons.forEach((button) => {
-    button.disabled = isLoading;
-  });
+  document
+    .querySelectorAll('#login-form-element button, #signup-form-element button, #logout-btn')
+    .forEach((button) => {
+      button.disabled = isLoading;
+    });
 }
 
 function getInputValue(id) {
-  const element = document.getElementById(id);
-  return element?.value?.trim() || '';
+  return document.getElementById(id)?.value?.trim() || '';
 }
