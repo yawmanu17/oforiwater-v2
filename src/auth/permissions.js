@@ -16,7 +16,8 @@ admin: [
   'audit',
   'data',
   'offline_queue',
-  'team'
+  'team',
+  'account'
 ],
 
 supervisor: [

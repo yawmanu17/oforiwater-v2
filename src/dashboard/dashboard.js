@@ -22,6 +22,7 @@ import { initOfflineQueueUi } from '../offline/offlineQueueUi.js';
 import { initUtilitySetup } from './utilitySetup.js';
 import { applyUtilityTheme } from '../ui/theme.js';
 import { initTeamUsersUi } from './teamUsers.js';
+import { initAccountSettingsUi } from './accountSettings.js';
 
 const TAB_CONFIG = [
   { id: 'dashboard', label: 'Dashboard', init: renderDashboardHome },
@@ -40,7 +41,8 @@ const TAB_CONFIG = [
   { id: 'audit', label: 'Audit', init: initAuditUi },
   { id: 'data', label: 'Import / Export', init: initImportExportUi },
   { id: 'offline_queue', label: 'Offline Queue', init: initOfflineQueueUi },
-  { id: 'team', label: 'Team', init: initTeamUsersUi }
+  { id: 'team', label: 'Team', init: initTeamUsersUi },
+  { id: 'account', label: 'My Account', init: initAccountSettingsUi },
 ];
 
 let offlineListenersAttached = false;
