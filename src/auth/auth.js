@@ -52,6 +52,76 @@ function wireAuthForms() {
   document.getElementById('login-form-element')?.addEventListener('submit', handleLogin);
   document.getElementById('signup-form-element')?.addEventListener('submit', handleSignup);
   document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+
+  document.getElementById('signup-mode-utility')?.addEventListener('click', () => {
+    setSignupMode('utility');
+  });
+
+  document.getElementById('signup-mode-staff')?.addEventListener('click', () => {
+    setSignupMode('staff');
+  });
+
+  document
+  .getElementById('show-reset-password')
+  ?.addEventListener('click', () => {
+    document.getElementById('login-form').hidden = true;
+    document.getElementById('signup-form').hidden = true;
+    document.getElementById('reset-password-form').hidden = false;
+  });
+
+document
+  .getElementById('back-to-login-from-reset')
+  ?.addEventListener('click', () => {
+    document.getElementById('reset-password-form').hidden = true;
+    document.getElementById('signup-form').hidden = true;
+    document.getElementById('login-form').hidden = false;
+  });
+
+document
+  .getElementById('reset-password-form-element')
+  ?.addEventListener('submit', handlePasswordReset);
+
+  setSignupMode('utility');
+
+}
+
+async function handlePasswordReset(event) {
+  event.preventDefault();
+
+  const email = getInputValue('reset-password-email');
+
+  if (!email) {
+    alert('Please enter your email.');
+    return;
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://oforiwater.com'
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert('Password reset link sent. Please check your email.');
+}
+
+function setSignupMode(mode) {
+  const signupMode = document.getElementById('signup-mode');
+  const utilityFields = document.getElementById('utility-signup-fields');
+
+  if (signupMode) signupMode.value = mode;
+
+  if (utilityFields) {
+    utilityFields.style.display = mode === 'utility' ? 'block' : 'none';
+  }
+
+  document.getElementById('signup-mode-utility')?.classList.toggle('btn-primary', mode === 'utility');
+  document.getElementById('signup-mode-utility')?.classList.toggle('btn-secondary', mode !== 'utility');
+
+  document.getElementById('signup-mode-staff')?.classList.toggle('btn-primary', mode === 'staff');
+  document.getElementById('signup-mode-staff')?.classList.toggle('btn-secondary', mode !== 'staff');
 }
 
 async function handleLogin(event) {
@@ -87,6 +157,9 @@ async function handleLogin(event) {
 async function handleSignup(event) {
   event.preventDefault();
 
+  const signupMode = getInputValue('signup-mode') || 'utility';
+  const isUtilitySignup = signupMode === 'utility';
+
   const fullName = getInputValue('signup-name');
   const email = getInputValue('signup-email');
   const password = getInputValue('signup-password');
@@ -113,9 +186,12 @@ async function handleSignup(event) {
     return;
   }
 
-  const isUtilityAdminSignup = Boolean(utilityName);
+  if (isUtilitySignup && !utilityName) {
+    alert('Utility name is required for new utility accounts.');
+    return;
+  }
 
-  const pendingSignup = isUtilityAdminSignup
+  const pendingSignup = isUtilitySignup
     ? {
         full_name: fullName,
         role: 'admin',
@@ -241,7 +317,7 @@ async function getOrCreateProfile(user, extra = {}) {
 
   if (!pendingInvite && !extra.utility_signup) {
     throw new Error(
-      'No staff invite found for this email. Please ask your utility admin to invite you first, or enter utility details to create a new utility account.'
+      'No staff invite found for this email. Please ask your utility admin to invite you first, or select Create Utility Account.'
     );
   }
 

@@ -39,11 +39,31 @@
           <button class="btn-primary" type="submit">Sign In</button>
         </form>
 
-        <p>No account? <button id="show-signup" type="button">Create account</button></p>
+        <p>
+          No account?
+          <button id="show-signup" type="button">Create account</button>
+        </p>
+
+        <p>
+          Forgot password?
+          <button id="show-reset-password" type="button">Reset password</button>
+        </p>
       </div>
 
       <div id="signup-form" hidden>
         <form id="signup-form-element">
+          <div class="button-row">
+            <button id="signup-mode-utility" class="btn-primary" type="button">
+              Create Utility Account
+            </button>
+
+            <button id="signup-mode-staff" class="btn-secondary" type="button">
+              Join Existing Utility
+            </button>
+          </div>
+
+          <input id="signup-mode" value="utility" hidden />
+
           <label>Full Name</label>
           <input id="signup-name" type="text" required />
 
@@ -53,57 +73,70 @@
           <label>Password</label>
           <input id="signup-password" type="password" minlength="8" required />
 
-          <label>Utility Name</label>
-          <input id="signup-utility-name" type="text" required />
+          <div id="utility-signup-fields">
+            <label>Utility Name</label>
+            <input id="signup-utility-name" type="text" />
 
-          <label>Legal Name</label>
-          <input id="signup-utility-legal-name" type="text" />
+            <label>Legal Name</label>
+            <input id="signup-utility-legal-name" type="text" />
 
-          <label>State</label>
-          <input id="signup-utility-state" type="text" />
+            <label>State</label>
+            <input id="signup-utility-state" type="text" />
 
-          <label>Phone</label>
-          <input id="signup-utility-phone" type="text" />
+            <label>Phone</label>
+            <input id="signup-utility-phone" type="text" />
 
-         <label>Billing Email</label>
-              <input id="signup-utility-billing-email" type="email" />
+            <label>Billing Email</label>
+            <input id="signup-utility-billing-email" type="email" />
 
-              <label>Support Email</label>
-              <input id="signup-utility-support-email" type="email" />
+            <label>Support Email</label>
+            <input id="signup-utility-support-email" type="email" />
 
-              <label>Website</label>
-              <input id="signup-utility-website" type="url" />
+            <label>Website</label>
+            <input id="signup-utility-website" type="url" />
 
-              <label>Primary Color</label>
-              <input
-                id="signup-utility-primary-color"
-                type="color"
-                value="#06b6d4"
-              />
+            <label>Primary Color</label>
+            <input id="signup-utility-primary-color" type="color" value="#06b6d4" />
 
-              <label>Secondary Color</label>
-              <input
-                id="signup-utility-secondary-color"
-                type="color"
-                value="#1a4b66"
-              />
+            <label>Secondary Color</label>
+            <input id="signup-utility-secondary-color" type="color" value="#1a4b66" />
 
-              <label>Logo URL</label>
-              <input
-                id="signup-utility-logo-url"
-                type="text"
-                placeholder="https://yourdomain.com/logo.png"
-              />
+            <label>Logo URL</label>
+            <input
+              id="signup-utility-logo-url"
+              type="text"
+              placeholder="https://yourdomain.com/logo.png"
+            />
 
-              <label>Address</label>
-              <input id="signup-utility-address" type="text" />
+            <label>Address</label>
+            <input id="signup-utility-address" type="text" />
+          </div>
 
           <input id="signup-role" value="admin" hidden />
-  
+
           <button class="btn-primary" type="submit">Create Account</button>
         </form>
 
-        <p>Already have an account? <button id="show-login" type="button">Sign In</button></p>
+        <p>
+          Already have an account?
+          <button id="show-login" type="button">Sign In</button>
+        </p>
+      </div>
+
+      <div id="reset-password-form" hidden>
+        <form id="reset-password-form-element">
+          <label>Email</label>
+          <input id="reset-password-email" type="email" required />
+
+          <button class="btn-primary" type="submit">
+            Send Reset Link
+          </button>
+        </form>
+
+        <p>
+          Remember your password?
+          <button id="back-to-login-from-reset" type="button">Sign In</button>
+        </p>
       </div>
     </div>
   </div>
@@ -114,24 +147,27 @@
         <img src="/assets/favicon.png" alt="OFORI Icon" class="app-icon" />
         <div>
           <h1>OFORI Water Platform</h1>
-          <p> Field-to-Desk Utility Operations • Welcome, <strong id="user-name">User</strong></p>
+          <p>
+            Field-to-Desk Utility Operations • Welcome,
+            <strong id="user-name">User</strong>
+          </p>
         </div>
       </div>
 
       <button id="logout-btn">Sign Out</button>
     </header>
 
-   <main class="dashboard-grid">
-  <div class="workspace-layout">
-    <aside class="workspace-sidebar">
-      <div id="sidebar-nav-root"></div>
-    </aside>
+    <main class="dashboard-grid">
+      <div class="workspace-layout">
+        <aside class="workspace-sidebar">
+          <div id="sidebar-nav-root"></div>
+        </aside>
 
-    <section class="workspace-main">
-      <div id="utility-setup-root"></div>
-    </section>
-  </div>
-</main>
+        <section class="workspace-main">
+          <div id="utility-setup-root"></div>
+        </section>
+      </div>
+    </main>
   </div>
 
   <script type="module" src="/src/main.js"></script>
