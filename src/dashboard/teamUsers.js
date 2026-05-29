@@ -11,6 +11,7 @@ import {
 
 import { sendStaffInviteEmail } from '../supabase/email.js';
 import { logAuditEvent } from '../audit/logAuditEvent.js';
+import { showSuccess, showError } from '../ui/toast.js';
 
 let profiles = [];
 let invites = [];
@@ -212,58 +213,49 @@ function wireEvents(rootId) {
     }
 
     const duplicateInvite = invites.find((invite) =>
-      invite.status === 'pending' &&
-      invite.email.toLowerCase() === email.toLowerCase()
-    );
+  invite.status === 'pending' &&
+  invite.email.toLowerCase() === email.toLowerCase()
+);
 
-    if (duplicateInvite) {
-      alert('A pending invite already exists for this email.');
-      return;
+if (duplicateInvite) {
+  alert('A pending invite already exists for this email.');
+  return;
+}
+
+try {
+  await createStaffInvite({
+    utility_id: authState.utility.id,
+    email,
+    full_name: fullName,
+    role,
+    status: 'pending',
+    invited_by: authState.profile.id
+  });
+
+  await logAuditEvent({
+    action: 'staff_invite_created',
+    entityType: 'staff_invite',
+    entityId: email,
+    details: {
+      role,
+      full_name: fullName
     }
+  });
 
-    try {
-      await createStaffInvite({
-        utility_id: authState.utility.id,
-        email,
-        full_name: fullName,
-        role,
-        status: 'pending',
-        invited_by: authState.profile.id
-      });
+  await sendStaffInviteEmail({
+    email,
+    fullName,
+    role,
+    utilityName: authState.utility.name
+  });
 
-      await createStaffInvite({
-        utility_id: authState.utility.id,
-        email,
-        full_name: fullName,
-        role,
-        status: 'pending',
-        invited_by: authState.profile.id
-      });
+  showSuccess('Staff invite created and email sent.');
 
-      await logAuditEvent({
-        action: 'staff_invite_created',
-        entityType: 'staff_invite',
-        entityId: email,
-        details: {
-          role,
-          full_name: fullName
-        }
-      });
-      
-      await sendStaffInviteEmail({
-        email,
-        fullName,
-        role,
-        utilityName: authState.utility.name
-      });
-
-      showSuccess('Staff invite created and email sent.');
-
-      await initTeamUsersUi(rootId);
-    } catch (error) {
-      console.error('Invite failed:', error);
-      showError(error.message || 'Invite failed.');
-    }
+  await initTeamUsersUi(rootId);
+} catch (error) {
+  console.error('Invite failed:', error);
+  showError(error.message || 'Staff invite failed.');
+}
   });
 
   document.querySelectorAll('.resend-invite-btn').forEach((button) => {
