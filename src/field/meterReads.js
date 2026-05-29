@@ -1,7 +1,6 @@
 import { authState } from '../auth/auth.js';
 import { getCustomersByUtility } from '../supabase/customers.js';
 import { completeRouteStopByCustomer } from '../supabase/routes.js';
-import { logAuditEvent } from '../audit/logAuditEvent.js';
 import {
   saveMeterRead,
   getMeterReadsByMonth

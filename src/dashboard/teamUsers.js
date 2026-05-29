@@ -10,7 +10,6 @@ import {
 } from '../supabase/profiles.js';
 
 import { sendStaffInviteEmail } from '../supabase/email.js';
-import { logAuditEvent } from '../audit/logAuditEvent.js';
 import { showSuccess, showError } from '../ui/toast.js';
 
 let profiles = [];
