@@ -520,15 +520,6 @@ async function generateReceipts() {
   alert(`${createdCount} receipt(s) generated.`);
 }
 
-await logAuditEvent({
-  action: 'bill_created',
-  entityType: 'billing',
-  entityId: bill.id,
-  details: {
-    customer_id: bill.customer_id,
-    amount: bill.amount
-  }
-});
 
 async function refreshReceipts() {
   const list = document.getElementById('receipt-list');
