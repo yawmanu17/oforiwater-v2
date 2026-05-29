@@ -6,6 +6,7 @@ import { uploadUtilityLogo } from '../supabase/storage.js';
 import { applyUtilityTheme } from '../ui/theme.js';
 import { requireTabAccess } from '../auth/permissions.js';
 import { logAuditEvent } from '../audit/logAuditEvent.js';
+import { showSuccess, showError } from '../ui/toast.js';
 
 
 let currentUtility = null;
@@ -225,6 +226,15 @@ currentUtility = {
   ...currentUtility,
   ...payload
 };
+
+await logAuditEvent({
+  action: 'utility_updated',
+  entityType: 'utility',
+  entityId: currentUtility.id,
+  details: {
+    utility_name: payload.name
+  }
+});
 
 authState.utility = currentUtility;
 applyUtilityTheme(currentUtility);

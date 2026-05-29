@@ -13,6 +13,8 @@ import {
   emptyState,
   safe
 } from '../ui/moduleLayout.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
+import { showSuccess, showError } from '../ui/toast.js';
 
 
 let dmas = [];
@@ -410,11 +412,15 @@ async function saveCustomer() {
     await savePendingCustomer(payload);
     alert('Customer saved locally because online save failed.');
   }
+  
+  showSuccess(editingCustomerId ? 'Customer updated.' : 'Customer and meter saved.');
 
   editingCustomerId = null;
   await reloadCustomers();
   await renderOfflineStatus('offline-status-root');
 }
+
+
 
 async function importCustomersCsv(event) {
   const utility = authState.utility;
