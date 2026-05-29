@@ -181,6 +181,7 @@ async function loadAnalytics() {
 
   const utilityTrend = analyzeUtilityUsageTrend(reads);
   const anomalies = detectCustomerAnomalies(reads);
+  const dmaTrends = analyzeDmaTrends(reads, customers);
   const importedRows = window.OFORI_IMPORTED_USAGE_ROWS || [];
 
 const importedTrend = importedRows.length
@@ -190,7 +191,7 @@ const importedTrend = importedRows.length
 const importedAnomalies = importedRows.length
   ? detectCustomerAnomalies(importedRows)
   : [];
-  const dmaTrends = analyzeDmaTrends(reads, customers);
+  
 
   const revenueForecast = forecastRevenue({
     forecastUsage: utilityTrend.forecast_next_period_usage || utilityTrend.forecastUsage || 0,
@@ -200,11 +201,13 @@ const importedAnomalies = importedRows.length
   });
 
   renderAnalyticsSummary({
-    utilityTrend,
-    revenueForecast,
-    reads,
-    customers
-  });
+  utilityTrend,
+  revenueForecast,
+  reads,
+  customers,
+  importedRows,
+  importedTrend
+});
 
   renderCustomerAnomalies(anomalies);
   renderDmaTrends(dmaTrends);
@@ -214,7 +217,9 @@ function renderAnalyticsSummary({
   utilityTrend,
   revenueForecast,
   reads,
-  customers
+  customers,
+  importedRows = [],
+  importedTrend = null
 }) {
   const root = document.getElementById('analytics-summary-root');
 
@@ -227,15 +232,11 @@ function renderAnalyticsSummary({
       ${metricCard('Utility Trend', utilityTrend.trend_direction || utilityTrend.trend || 'No data')}
       ${metricCard('Forecast Usage', formatNumber(utilityTrend.forecast_next_period_usage || utilityTrend.forecastUsage || 0))}
       ${metricCard('Forecast Revenue', '$' + formatNumber(revenueForecast.totalForecastRevenue || 0))}
-      ${metricCard(
-  'Imported Rows',
-  importedRows.length
-)}
-
+   ${metricCard('Imported Rows', importedRows.length)}
 ${metricCard(
   'Imported Forecast',
   importedTrend
-    ? formatNumber(importedTrend.forecast_next_period_usage || 0)
+    ? formatNumber(importedTrend.forecast_next_period_usage || importedTrend.forecastUsage || 0)
     : 'No import'
 )}
     </div>
