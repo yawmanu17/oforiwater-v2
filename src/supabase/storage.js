@@ -23,3 +23,27 @@ export async function uploadUtilityLogo({ utilityId, file }) {
 
   return data.publicUrl;
 }
+
+export async function uploadMeterReadPhoto({ utilityId, customerId, file }) {
+  if (!utilityId || !customerId || !file) {
+    throw new Error('Utility, customer, and file are required.');
+  }
+
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${utilityId}/${customerId}/meter-${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from('meter-read-photos')
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage
+    .from('meter-read-photos')
+    .getPublicUrl(path);
+
+  return data.publicUrl;
+}

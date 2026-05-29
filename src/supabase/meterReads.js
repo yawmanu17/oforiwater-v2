@@ -33,3 +33,24 @@ export async function getMeterReadsByMonth(utilityId, billingMonth) {
   if (error) throw error;
   return data || [];
 }
+
+export async function getRecentMeterReadsByUtility(utilityId, limit = 25) {
+  const { data, error } = await supabase
+    .from('meter_reads')
+    .select(`
+      *,
+      customers (
+        account_number,
+        customer_name,
+        meter_number,
+        service_address
+      )
+    `)
+    .eq('utility_id', utilityId)
+    .order('reading_date', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return data || [];
+}

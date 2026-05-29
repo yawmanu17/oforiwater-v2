@@ -3,7 +3,8 @@ import { getCustomersByUtility } from '../supabase/customers.js';
 import { completeRouteStopByCustomer } from '../supabase/routes.js';
 import {
   saveMeterRead,
-  getMeterReadsByMonth
+  getMeterReadsByMonth,
+  getRecentMeterReadsByUtility
 } from '../supabase/meterReads.js';
 import { getCurrentGpsPosition } from '../gis/geocode.js';
 import {
@@ -15,6 +16,9 @@ import {
   safe
 } from '../ui/moduleLayout.js';
 import { logAuditEvent } from '../audit/logAuditEvent.js';
+import { uploadMeterReadPhoto } from '../supabase/storage.js';
+import { showSuccess, showWarning, showError } from '../ui/toast.js';
+
 
 const GAL_PER_CCF = 748;
 
@@ -108,8 +112,12 @@ function readingFormHtml() {
         <label>Customer
           <select id="field-customer">
             ${customers.map((customer) => `
-              <option value="${safe(customer.id)}" ${selectedCustomer?.id === customer.id ? 'selected' : ''}>
-                ${safe(customer.account_number)} — ${safe(customer.customer_name || 'Unnamed')}
+              <option
+                value="${safe(customer.id)}"
+                ${selectedCustomer?.id === customer.id ? 'selected' : ''}
+              >
+                ${safe(customer.account_number)}
+                — ${safe(customer.customer_name || 'Unnamed')}
               </option>
             `).join('')}
           </select>
@@ -149,7 +157,13 @@ function readingFormHtml() {
         </label>
 
         <label>Current Reading
-          <input id="field-current-reading" class="field-primary-input" type="number" step="0.01" placeholder="Enter current reading" />
+          <input
+            id="field-current-reading"
+            class="field-primary-input"
+            type="number"
+            step="0.01"
+            placeholder="Enter current reading"
+          />
         </label>
 
         <label>Usage
@@ -157,21 +171,67 @@ function readingFormHtml() {
         </label>
 
         <label>Captured GPS
-          <input id="field-gps-preview" readonly placeholder="No GPS captured yet" />
+          <input
+            id="field-gps-preview"
+            readonly
+            placeholder="No GPS captured yet"
+          />
+        </label>
+
+        <label>Meter Photo
+          <input id="field-meter-photo" type="file" accept="image/*" />
+        </label>
+
+        <label>Photo Note
+          <input
+            id="field-photo-note"
+            placeholder="Leak, blocked meter, damaged lid..."
+          />
         </label>
       </div>
 
       <label>Field Notes
-        <textarea id="field-notes" rows="3" placeholder="Meter condition, access notes, leak observation, safety issue..."></textarea>
+        <textarea
+          id="field-notes"
+          rows="3"
+          placeholder="Meter condition, access notes, leak observation, safety issue..."
+        ></textarea>
       </label>
 
       <div class="field-action-row">
-        <button id="field-capture-gps-btn" class="btn-secondary" type="button">Capture GPS</button>
-        <button id="field-save-btn" class="btn-secondary" type="button">Save</button>
-        <button id="field-save-next-btn" class="btn-primary" type="button">Save & Next</button>
-        <button id="field-clear-btn" class="btn-secondary" type="button">Clear</button>
-        <button id="field-navigate-btn" class="btn-secondary" type="button">Navigate</button>
+        <button id="field-capture-gps-btn" class="btn-secondary" type="button">
+          Capture GPS
+        </button>
+
+        <button id="field-save-btn" class="btn-secondary" type="button">
+          Save
+        </button>
+
+        <button id="field-save-next-btn" class="btn-primary" type="button">
+          Save & Next
+        </button>
+
+        <button id="field-clear-btn" class="btn-secondary" type="button">
+          Clear
+        </button>
+
+        <button id="field-navigate-btn" class="btn-secondary" type="button">
+          Navigate
+        </button>
       </div>
+
+      <section class="module-panel" style="margin-top:1rem;">
+        <div class="module-panel-header">
+          <div>
+            <h3 class="module-panel-title">Recent Meter Reads</h3>
+            <p class="module-panel-subtitle">
+              Latest field reads, exceptions, GPS capture, and uploaded meter photos.
+            </p>
+          </div>
+        </div>
+
+        <div id="recent-meter-reads-list"></div>
+      </section>
     </div>
   `;
 }
@@ -313,11 +373,87 @@ async function captureGps() {
   }
 }
 
+async function renderRecentReads() {
+  const root = document.getElementById('recent-meter-reads-list');
+  const utility = authState.utility;
+
+  if (!root || !utility?.id) return;
+
+  const reads = await getRecentMeterReadsByUtility(utility.id, 25);
+
+  if (!reads.length) {
+    root.innerHTML = `
+      <div class="module-empty">
+        No meter reads recorded yet.
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = `
+    <div class="compact-list">
+      ${reads.map((read) => `
+        <div class="mini-card">
+          <strong>
+            ${safe(read.customers?.account_number || 'No Account')}
+            — ${safe(read.customers?.customer_name || 'Unnamed Customer')}
+          </strong>
+
+          <br />
+
+          <small>
+            Meter: ${safe(read.customers?.meter_number || '—')}
+            • Read: ${safe(read.current_read || 0)}
+            ${safe(read.reading_unit || '')}
+            • Usage: ${Number(read.usage_ccf || 0).toFixed(2)} CCF
+            • ${safe(read.reading_date || '')}
+          </small>
+
+          ${read.exception_code ? `
+            <div style="margin-top:.45rem;">
+              <span class="status-badge status-bad">
+                ${safe(read.exception_code)}
+              </span>
+            </div>
+          ` : ''}
+
+          ${read.gps_lat && read.gps_lon ? `
+            <small>
+              GPS: ${Number(read.gps_lat).toFixed(6)},
+              ${Number(read.gps_lon).toFixed(6)}
+              ${read.gps_accuracy_m ? `• ±${Number(read.gps_accuracy_m).toFixed(1)}m` : ''}
+            </small>
+          ` : ''}
+
+          ${read.photo_note ? `
+            <div style="margin-top:.45rem;">
+              <small>Photo Note: ${safe(read.photo_note)}</small>
+            </div>
+          ` : ''}
+
+          ${read.photo_url ? `
+            <div class="button-row" style="margin-top:.65rem;">
+              <a
+                href="${safe(read.photo_url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-secondary"
+              >
+                View Meter Photo
+              </a>
+            </div>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 async function saveRead(moveNext = false) {
   const utility = authState.utility;
 
   if (!utility?.id || !selectedCustomer?.id) {
-    alert('Select a customer first.');
+    showWarning('Select a customer first.');
     return;
   }
 
@@ -326,58 +462,104 @@ async function saveRead(moveNext = false) {
   const unit = val('field-unit') || 'CCF';
 
   if (!current && !val('field-exception-code')) {
-    alert('Enter current reading or select an exception.');
+    showWarning('Enter current reading or select an exception.');
     return;
   }
 
-  const rawUsage = Math.max(current - previous, 0);
-  const usageCcf = unit === 'GAL' ? rawUsage / GAL_PER_CCF : rawUsage;
-  const usageGal = unit === 'GAL' ? rawUsage : rawUsage * GAL_PER_CCF;
+  try {
+    let photoUrl = null;
 
-  const payload = {
-  utility_id: utility.id,
-  customer_id: selectedCustomer.id,
-  billing_month: val('field-billing-month') || currentMonth(),
-  reading_date: val('field-reading-date') || todayDate(),
-  previous_read: previous,
-  current_read: current,
-  reading_unit: unit,
-  usage_ccf: usageCcf,
-  usage_gal: usageGal,
-  read_type: val('field-read-type') || 'actual',
-  exception_code: val('field-exception-code') || null,
-  notes: val('field-notes'),
-  gps_lat: capturedGps?.lat || null,
-  gps_lon: capturedGps?.lon || null,
-  gps_accuracy_m: capturedGps?.accuracy || null,
-  reader_id: authState.user?.id || null
-};
+    const photoFile = document.getElementById('field-meter-photo')?.files?.[0];
 
-if (!navigator.onLine) {
-  await savePendingRead(payload);
+    if (photoFile && navigator.onLine) {
+      photoUrl = await uploadMeterReadPhoto({
+        utilityId: utility.id,
+        customerId: selectedCustomer.id,
+        file: photoFile
+      });
+    }
 
-  showWarning('Device is offline. Meter read saved locally and will sync later.');
-  return;
-}
+    const rawUsage = Math.max(current - previous, 0);
+    const usageCcf = unit === 'GAL' ? rawUsage / GAL_PER_CCF : rawUsage;
+    const usageGal = unit === 'GAL' ? rawUsage : rawUsage * GAL_PER_CCF;
 
-const read = await saveMeterRead(payload);
+    const payload = {
+      utility_id: utility.id,
+      customer_id: selectedCustomer.id,
+      billing_month: val('field-billing-month') || currentMonth(),
+      reading_date: val('field-reading-date') || todayDate(),
 
-await completeRouteStopByCustomer({
-  utilityId: utility.id,
-  customerId: selectedCustomer.id
-});
+      previous_read: previous,
+      current_read: current,
 
-await logAuditEvent({
-  action: 'meter_read_recorded',
-  entityType: 'meter_read',
-  entityId: read.id,
-  details: {
-    customer_id: read.customer_id,
-    meter_number: selectedCustomer.meter_number,
-    current_reading: read.current_read,
-    reading_date: read.reading_date
+      reading_unit: unit,
+      usage_ccf: usageCcf,
+      usage_gal: usageGal,
+
+      read_type: val('field-read-type') || 'actual',
+      exception_code: val('field-exception-code') || null,
+      notes: val('field-notes'),
+
+      gps_lat: capturedGps?.lat || null,
+      gps_lon: capturedGps?.lon || null,
+      gps_accuracy_m: capturedGps?.accuracy || null,
+
+      reader_id: authState.user?.id || null,
+
+      photo_url: photoUrl,
+      photo_note: val('field-photo-note')
+    };
+
+    if (!navigator.onLine) {
+      await savePendingRead(payload);
+
+      showWarning('Device is offline. Meter read saved locally and will sync later.');
+      return;
+    }
+
+    const read = await saveMeterRead(payload);
+
+    await completeRouteStopByCustomer({
+      utilityId: utility.id,
+      customerId: selectedCustomer.id
+    });
+
+    await logAuditEvent({
+      action: 'meter_read_recorded',
+      entityType: 'meter_read',
+      entityId: read.id,
+      details: {
+        customer_id: read.customer_id,
+        meter_number: selectedCustomer.meter_number,
+        current_reading: read.current_read,
+        reading_date: read.reading_date
+      }
+    });
+
+    if (photoUrl) {
+      await logAuditEvent({
+        action: 'meter_read_photo_uploaded',
+        entityType: 'meter_read',
+        entityId: read.id,
+        details: {
+          customer_id: selectedCustomer.id,
+          meter_number: selectedCustomer.meter_number,
+          photo_url: photoUrl
+        }
+      });
+    }
+
+    showSuccess('Meter read saved.');
+
+    if (moveNext) {
+      moveToNextCustomer?.();
+    }
+  } catch (error) {
+    console.error('Meter read save failed:', error);
+
+    showError(error.message || 'Meter read could not be saved.');
   }
-});
+}
 
 showSuccess('Meter read saved.');
   reads = await getMeterReadsByMonth(utility.id, payload.billing_month);
@@ -388,9 +570,30 @@ showSuccess('Meter read saved.');
     clearReadFields();
     renderRefresh();
   }
+
+
+async function renderRecentReads() {
+  const container = document.getElementById('recent-meter-reads-list');
+
+  if (!container) return;
+
+  const reads = await getRecentMeterReadsByUtility(
+    authState.utility.id,
+    25
+  );
+
+  container.innerHTML = reads.length
+    ? reads.map(read => `
+        <div class="mini-card">
+          <strong>${safe(read.customers?.customer_name || 'Customer')}</strong><br>
+          Read: ${read.current_read}<br>
+          Date: ${read.reading_date}
+        </div>
+      `).join('')
+    : '<p>No meter reads recorded yet.</p>';
 }
 
-function goToNextCustomer() {
+  function goToNextCustomer() {
   if (!customers.length) return;
 
   currentIndex = Math.min(currentIndex + 1, customers.length - 1);
