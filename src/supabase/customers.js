@@ -1,5 +1,4 @@
 import { supabase } from './client.js';
-import { logAuditEvent } from '../audit/logAuditEvent.js';
 
 export async function createCustomer(payload) {
   const { data: customer, error } = await supabase
