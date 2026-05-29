@@ -201,44 +201,45 @@ async function saveUtility() {
   }
 
   const payload = {
-    name: val('utility-name'),
-    legal_name: val('utility-legal-name'),
-    state: val('utility-state'),
-    website: val('utility-website'),
+  name: val('utility-name'),
+  legal_name: val('utility-legal-name'),
+  state: val('utility-state'),
+  website: val('utility-website'),
 
-    billing_email: val('utility-billing-email'),
-    support_email: val('utility-support-email'),
+  billing_email: val('utility-billing-email'),
+  support_email: val('utility-support-email'),
 
-    phone: val('utility-phone'),
-    address: val('utility-address'),
+  phone: val('utility-phone'),
+  address: val('utility-address'),
 
-    primary_color: val('utility-primary-color') || '#06b6d4',
-    secondary_color: val('utility-secondary-color') || '#1a4b66',
+  primary_color: val('utility-primary-color') || '#06b6d4',
+  secondary_color: val('utility-secondary-color') || '#1a4b66',
 
-    logo_url: logoUrl
-  };
+  logo_url: logoUrl
+};
 
-  await updateUtility(currentUtility.id, payload);
+await updateUtility(currentUtility.id, payload);
 
-  currentUtility = {
-    ...currentUtility,
-    ...payload
-  };
+currentUtility = {
+  ...currentUtility,
+  ...payload
+};
 
-  authState.utility = currentUtility;
-  applyUtilityTheme(currentUtility);
+authState.utility = currentUtility;
+applyUtilityTheme(currentUtility);
 
-  setValue('utility-logo-url', logoUrl);
+setValue('utility-logo-url', logoUrl);
 
-  alert('Utility profile saved successfully.');
-  await logAuditEvent({
+await logAuditEvent({
   action: 'utility_updated',
   entityType: 'utility',
-  entityId: utility.id,
+  entityId: currentUtility.id,
   details: {
-    utility_name: utility.name
+    utility_name: currentUtility.name
   }
 });
+
+showSuccess('Utility profile saved successfully.');
 }
 
 async function saveDma() {
