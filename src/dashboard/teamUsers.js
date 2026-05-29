@@ -11,6 +11,7 @@ import {
 
 import { sendStaffInviteEmail } from '../supabase/email.js';
 import { showSuccess, showError } from '../ui/toast.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
 
 let profiles = [];
 let invites = [];

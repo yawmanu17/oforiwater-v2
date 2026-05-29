@@ -14,6 +14,7 @@ import {
   emptyState,
   safe
 } from '../ui/moduleLayout.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
 
 const GAL_PER_CCF = 748;
 

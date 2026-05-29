@@ -11,6 +11,7 @@ import {
 } from '../supabase/receipts.js';
 import { calculateBill } from './billingEngine.js';
 import { downloadReceiptPdf } from './receiptEngine.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
 
 
 let billingProfiles = [];
