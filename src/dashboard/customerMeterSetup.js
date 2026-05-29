@@ -399,25 +399,48 @@ async function saveCustomer() {
   active: true
 };
 
-  try {
-    if (!navigator.onLine) {
-      await savePendingCustomer(payload);
-      alert('Device is offline. Customer saved locally and will sync later.');
-    } else {
-      await upsertCustomer(payload);
-      alert(editingCustomerId ? 'Customer updated.' : 'Customer and meter saved.');
-    }
-  } catch (error) {
-    console.warn('Online customer save failed. Saving offline instead:', error.message);
-    await savePendingCustomer(payload);
-    alert('Customer saved locally because online save failed.');
-  }
-  
-  showSuccess(editingCustomerId ? 'Customer updated.' : 'Customer and meter saved.');
+  let savedCustomer = null;
+let savedOffline = false;
 
-  editingCustomerId = null;
-  await reloadCustomers();
-  await renderOfflineStatus('offline-status-root');
+try {
+  if (!navigator.onLine) {
+    await savePendingCustomer(payload);
+    savedOffline = true;
+
+    showWarning('Device is offline. Customer saved locally and will sync later.');
+  } else {
+    savedCustomer = await upsertCustomer(payload);
+
+    await logAuditEvent({
+      action: editingCustomerId ? 'customer_updated' : 'customer_created',
+      entityType: 'customer',
+      entityId: savedCustomer.id,
+      details: {
+        account_number: savedCustomer.account_number,
+        customer_name: savedCustomer.customer_name,
+        meter_number: savedCustomer.meter_number
+      }
+    });
+
+    showSuccess(
+      editingCustomerId
+        ? 'Customer updated.'
+        : 'Customer and meter saved.'
+    );
+  }
+} catch (error) {
+  console.warn('Online customer save failed. Saving offline instead:', error.message);
+
+  await savePendingCustomer(payload);
+  savedOffline = true;
+
+  showWarning('Customer saved locally because online save failed.');
+}
+
+editingCustomerId = null;
+
+await reloadCustomers();
+await renderOfflineStatus('offline-status-root');
 }
 
 

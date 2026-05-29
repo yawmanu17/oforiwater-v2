@@ -335,37 +335,37 @@ async function saveRead(moveNext = false) {
   const usageGal = unit === 'GAL' ? rawUsage : rawUsage * GAL_PER_CCF;
 
   const payload = {
-    utility_id: utility.id,
-    customer_id: selectedCustomer.id,
-    billing_month: val('field-billing-month') || currentMonth(),
-    reading_date: val('field-reading-date') || todayDate(),
-    previous_read: previous,
-    current_read: current,
-    reading_unit: unit,
-    usage_ccf: usageCcf,
-    usage_gal: usageGal,
-    read_type: val('field-read-type') || 'actual',
-    exception_code: val('field-exception-code') || null,
-    notes: val('field-notes'),
-    gps_lat: capturedGps?.lat || null,
-    gps_lon: capturedGps?.lon || null,
-    gps_accuracy_m: capturedGps?.accuracy || null,
-    reader_id: authState.user?.id || null
-  };
+  utility_id: utility.id,
+  customer_id: selectedCustomer.id,
+  billing_month: val('field-billing-month') || currentMonth(),
+  reading_date: val('field-reading-date') || todayDate(),
+  previous_read: previous,
+  current_read: current,
+  reading_unit: unit,
+  usage_ccf: usageCcf,
+  usage_gal: usageGal,
+  read_type: val('field-read-type') || 'actual',
+  exception_code: val('field-exception-code') || null,
+  notes: val('field-notes'),
+  gps_lat: capturedGps?.lat || null,
+  gps_lon: capturedGps?.lon || null,
+  gps_accuracy_m: capturedGps?.accuracy || null,
+  reader_id: authState.user?.id || null
+};
 
-  if (!navigator.onLine) {
+if (!navigator.onLine) {
   await savePendingRead(payload);
-  alert('Device is offline. Meter read saved locally and will sync later.');
-} else {
-  await saveMeterRead(payload);
 
-  await completeRouteStopByCustomer({
-    utilityId: utility.id,
-    customerId: customer.id
-  });
-
-  alert('Meter read saved.');
+  showWarning('Device is offline. Meter read saved locally and will sync later.');
+  return;
 }
+
+const read = await saveMeterRead(payload);
+
+await completeRouteStopByCustomer({
+  utilityId: utility.id,
+  customerId: selectedCustomer.id
+});
 
 await logAuditEvent({
   action: 'meter_read_recorded',
@@ -373,10 +373,13 @@ await logAuditEvent({
   entityId: read.id,
   details: {
     customer_id: read.customer_id,
-    reading: read.current_reading
+    meter_number: selectedCustomer.meter_number,
+    current_reading: read.current_read,
+    reading_date: read.reading_date
   }
 });
 
+showSuccess('Meter read saved.');
   reads = await getMeterReadsByMonth(utility.id, payload.billing_month);
 
   if (moveNext) {
