@@ -23,6 +23,8 @@ import {
   buildBusinessCase
 } from './businessCaseEngine.js';
 import { prioritizeDmas } from './dmaPriorityEngine.js';
+import { buildWaterLossActionPlan } from './actionPlanEngine.js';
+
 
 let dmas = [];
 let customers = [];
@@ -75,6 +77,9 @@ function render(root, billingMonth) {
 
           <button id="refresh-nrw-btn" class="btn-primary" type="button">
             Refresh NRW
+          </button>
+          <button id="export-nrw-pdf-btn" class="btn-secondary" type="button">
+            Export NRW Report PDF
           </button>
         </div>
       </div>
@@ -230,6 +235,9 @@ function wireEvents() {
   document
     .getElementById('load-imported-nrw-btn')
     ?.addEventListener('click', loadImportedNrwData);
+    document
+  .getElementById('export-nrw-pdf-btn')
+  ?.addEventListener('click', exportNrwPdfReport);
 }
 
 async function refreshNrw() {
@@ -303,6 +311,14 @@ function renderNrwResults(metrics, normalized, readiness) {
   if (!root) return;
 
   const businessCase = buildBusinessCase(metrics);
+  const actionPlan = buildWaterLossActionPlan({
+  metrics,
+  prioritizedDmas: prioritizeDmas(buildDmaNrwModels(), {
+    productionCost: 0.003,
+    retailRate: 0.006
+  }),
+  readiness
+});
 
   root.innerHTML = `
     <div class="module-kpis">
@@ -416,6 +432,31 @@ function renderNrwResults(metrics, normalized, readiness) {
       .map(item => `<li>${safe(item)}</li>`)
       .join('')}
   </ul>
+</section>
+<section class="module-panel" style="margin-top:1rem;">
+  <h3 class="module-panel-title">
+    Water Loss Action Plan
+  </h3>
+
+  ${actionPlan.map((plan) => `
+    <div class="mini-card">
+      <strong>${safe(plan.title)}</strong>
+
+      <div style="margin:.5rem 0;">
+        <span class="status-badge">
+          ${safe(plan.priority)}
+        </span>
+      </div>
+
+      <p>${safe(plan.summary)}</p>
+
+      <ul>
+        ${plan.steps
+          .map(step => `<li>${safe(step)}</li>`)
+          .join('')}
+      </ul>
+    </div>
+  `).join('')}
 </section>
   `;
 }
@@ -572,6 +613,58 @@ function dmaPriorityHtml(items) {
   `;
 }
 
+function exportNrwPdfReport() {
+  const { jsPDF } = window.jspdf;
+
+  const models = buildDmaNrwModels();
+  const totals = summarizeModels(models);
+
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text('OFORI Water - NRW Analytics Report', 14, 18);
+
+  doc.setFontSize(10);
+  doc.text(`Utility: ${authState.utility?.name || 'Utility'}`, 14, 26);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 32);
+
+  doc.autoTable({
+    startY: 42,
+    head: [['Metric', 'Value']],
+    body: [
+      ['Master Inflow', formatGallons(totals.masterFlowGal)],
+      ['Billed Usage', formatGallons(totals.billedUsageGal)],
+      ['NRW Volume', formatGallons(totals.nrwGal)],
+      ['NRW %', formatPercent(totals.nrwPercent)]
+    ]
+  });
+
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 10,
+    head: [[
+      'DMA',
+      'Customers',
+      'Reads',
+      'Master Inflow',
+      'Billed Usage',
+      'NRW',
+      'NRW %',
+      'Status'
+    ]],
+    body: models.map((item) => [
+      item.dma.name || '',
+      item.customerCount,
+      item.readCount,
+      formatGallons(item.masterFlowGal),
+      formatGallons(item.authorizedGal),
+      formatGallons(item.nrwGal),
+      formatPercent(item.nrwPercent),
+      item.status
+    ])
+  });
+
+  doc.save(`OFORI-NRW-Report-${currentMonth()}.pdf`);
+}
 function priorityClass(level) {
   if (level === 'Critical') return 'status-bad';
   if (level === 'High') return 'status-warning';
