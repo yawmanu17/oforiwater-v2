@@ -28,7 +28,6 @@ export async function initTeamUsersUi(rootId = 'dashboard-module-root') {
     <section class="module-page">
       <div class="module-toolbar">
         <div class="module-title-block">
-          <div class="module-eyebrow">Utility Access Control</div>
           <h2>Team / Users</h2>
           <p>Invite staff using company emails and assign role-based access.</p>
         </div>
