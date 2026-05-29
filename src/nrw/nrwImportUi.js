@@ -196,14 +196,16 @@ window.OFORI_NRW_IMPORTED_EXPORTED = rows.reduce(
   }
 
   normalizedReads = importedRows.map((row) =>
-    normalizeImportedRead(row, mapping)
-  );
+  normalizeImportedRead(row, mapping)
+);
 
-  const summary = summarizeImportedReads(normalizedReads);
+const summary = summarizeImportedReads(normalizedReads);
 
-  renderReadSummary(summary, normalizedReads);
-  window.OFORI_NRW_IMPORTED_READS = normalizedReads;
+window.OFORI_IMPORTED_USAGE_ROWS = normalizedReads;
+window.OFORI_NRW_IMPORTED_READS = normalizedReads;
 window.OFORI_NRW_IMPORTED_BILLED_USAGE = summary.total_adjusted_usage;
+
+renderReadSummary(summary, normalizedReads);
 }
 
 function collectMapping(importType) {

@@ -181,6 +181,15 @@ async function loadAnalytics() {
 
   const utilityTrend = analyzeUtilityUsageTrend(reads);
   const anomalies = detectCustomerAnomalies(reads);
+  const importedRows = window.OFORI_IMPORTED_USAGE_ROWS || [];
+
+const importedTrend = importedRows.length
+  ? analyzeUtilityUsageTrend(importedRows)
+  : null;
+
+const importedAnomalies = importedRows.length
+  ? detectCustomerAnomalies(importedRows)
+  : [];
   const dmaTrends = analyzeDmaTrends(reads, customers);
 
   const revenueForecast = forecastRevenue({
@@ -218,6 +227,17 @@ function renderAnalyticsSummary({
       ${metricCard('Utility Trend', utilityTrend.trend_direction || utilityTrend.trend || 'No data')}
       ${metricCard('Forecast Usage', formatNumber(utilityTrend.forecast_next_period_usage || utilityTrend.forecastUsage || 0))}
       ${metricCard('Forecast Revenue', '$' + formatNumber(revenueForecast.totalForecastRevenue || 0))}
+      ${metricCard(
+  'Imported Rows',
+  importedRows.length
+)}
+
+${metricCard(
+  'Imported Forecast',
+  importedTrend
+    ? formatNumber(importedTrend.forecast_next_period_usage || 0)
+    : 'No import'
+)}
     </div>
   `;
 }
@@ -303,16 +323,13 @@ function renderBarChart(canvasId, labels, values, label) {
       type: 'bar',
       data: {
         labels,
-        datasets: [
-          {
-            label,
-            data: values
-          }
-        ]
+        datasets: [{ label, data: values }]
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
+        animation: false,
+        resizeDelay: 200
       }
     })
   );
