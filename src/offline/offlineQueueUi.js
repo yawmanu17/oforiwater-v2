@@ -20,7 +20,6 @@ export async function initOfflineQueueUi(rootId = 'dashboard-module-root') {
     <section class="module-page">
       <div class="module-toolbar">
         <div class="module-title-block">
-          <div class="module-eyebrow">Offline Field Operations</div>
           <h2>Offline Sync Queue</h2>
           <p>Review pending meter reads and customer records saved locally while field devices are offline.</p>
         </div>

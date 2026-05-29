@@ -571,28 +571,6 @@ showSuccess('Meter read saved.');
     renderRefresh();
   }
 
-
-async function renderRecentReads() {
-  const container = document.getElementById('recent-meter-reads-list');
-
-  if (!container) return;
-
-  const reads = await getRecentMeterReadsByUtility(
-    authState.utility.id,
-    25
-  );
-
-  container.innerHTML = reads.length
-    ? reads.map(read => `
-        <div class="mini-card">
-          <strong>${safe(read.customers?.customer_name || 'Customer')}</strong><br>
-          Read: ${read.current_read}<br>
-          Date: ${read.reading_date}
-        </div>
-      `).join('')
-    : '<p>No meter reads recorded yet.</p>';
-}
-
   function goToNextCustomer() {
   if (!customers.length) return;
 
