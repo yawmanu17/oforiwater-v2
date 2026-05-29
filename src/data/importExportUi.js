@@ -3,6 +3,8 @@ import { parseCsv } from '../utils/csv.js';
 import { upsertCustomer, getCustomersByUtility } from '../supabase/customers.js';
 import { getReceiptsByUtility } from '../supabase/receipts.js';
 import { getNrwReportsByUtility } from '../supabase/nrw.js';
+import { requireTabAccess } from '../auth/permissions.js';
+
 
 export async function initImportExportUi(rootId = 'dashboard-module-root') {
   const root = document.getElementById(rootId);

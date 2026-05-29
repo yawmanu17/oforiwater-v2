@@ -15,6 +15,7 @@ import {
 
 import { authState } from '../auth/auth.js';
 import { getAnalyticsData } from './analyticsService.js';
+import { requireTabAccess } from '../auth/permissions.js';
 
 Chart.register(
   BarController,

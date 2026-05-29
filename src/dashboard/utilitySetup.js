@@ -4,6 +4,7 @@ import { createDma, getDmasByUtility } from '../supabase/dmas.js';
 import { updateDma } from '../supabase/dmas.js';
 import { uploadUtilityLogo } from '../supabase/storage.js';
 import { applyUtilityTheme } from '../ui/theme.js';
+import { requireTabAccess } from '../auth/permissions.js';
 
 let currentUtility = null;
 let editingDmaId = null;

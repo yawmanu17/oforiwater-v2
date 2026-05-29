@@ -1,4 +1,5 @@
 import { authState } from '../auth/auth.js';
+import { requireTabAccess } from '../auth/permissions.js';
 
 import {
   getProfilesByUtility,

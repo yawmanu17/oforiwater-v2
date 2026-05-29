@@ -1,5 +1,6 @@
 import { authState } from '../auth/auth.js';
 import { getAuditLogsByUtility } from '../supabase/auditLogs.js';
+import { requireTabAccess } from '../auth/permissions.js';
 
 export async function initAuditUi(rootId = 'dashboard-module-root') {
   const root = document.getElementById(rootId);

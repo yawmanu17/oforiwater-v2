@@ -16,7 +16,11 @@ export async function navigateTo({ tabId, tabs = [], rootId = 'dashboard-module-
 
   const tab = tabs.find((item) => item.id === tabId);
 
-  if (!tab || typeof tab.init !== 'function') {
+  if (!tab) {
+    throw new Error('You do not have permission to access this module.');
+  }
+
+  if (typeof tab.init !== 'function') {
     root.innerHTML = `<section class="module-empty">Module not found.</section>`;
     return;
   }

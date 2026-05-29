@@ -58,6 +58,7 @@ export async function initDashboard() {
   }
 
   const role = authState.profile.role;
+  window.OFORI_AUTH_ROLE = role;
   const allowedTabs = getAllowedTabs(role);
   const visibleTabs = TAB_CONFIG.filter((tab) => allowedTabs.includes(tab.id));
   const defaultTab = visibleTabs[0];
