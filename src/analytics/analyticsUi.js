@@ -17,6 +17,13 @@ import { authState } from '../auth/auth.js';
 import { getAnalyticsData } from './analyticsService.js';
 import { requireTabAccess } from '../auth/permissions.js';
 
+import { getCustomersByUtility } from '../supabase/customers.js';
+import { getMeterReadsByMonth } from '../supabase/meterReads.js';
+
+import { analyzeUtilityUsageTrend, detectCustomerAnomalies } from './trendEngine.js';
+import { analyzeDmaTrends } from './dmaAnalytics.js';
+import { forecastRevenue } from './revenueForecastEngine.js';
+
 Chart.register(
   BarController,
   BarElement,
@@ -34,6 +41,8 @@ Chart.register(
 let chartInstances = [];
 
 export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
+  requireTabAccess('analytics');
+
   const root = document.getElementById(rootId);
   const utility = authState.utility;
 
@@ -42,43 +51,77 @@ export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
   destroyCharts();
 
   root.innerHTML = `
-    <section class="card section-card">
-      <h2>Analytics Dashboard</h2>
-      <p>Visualize customers, consumption, revenue, and NRW performance.</p>
+    <section class="module-page">
+      <div class="module-toolbar">
+        <div class="module-title-block">
+          <div class="module-eyebrow">Predictive Utility Intelligence</div>
+          <h2>Analytics & Forecasting</h2>
+          <p>
+            Analyze utility consumption trends, customer anomalies, DMA demand trends,
+            NRW patterns, and forecast revenue.
+          </p>
+        </div>
 
-      <div class="form-grid">
-        <label>Billing Month
-          <input id="analytics-billing-month" type="month" value="${currentMonth()}" />
-        </label>
+        <div class="module-actions">
+          <label>Billing Month
+            <input id="analytics-billing-month" type="month" value="${currentMonth()}" />
+          </label>
+
+          <button id="load-analytics-btn" class="btn-primary" type="button">
+            Load Analytics
+          </button>
+        </div>
       </div>
 
-      <div class="button-row">
-        <button id="load-analytics-btn" class="btn-primary" type="button">
-          Load Analytics
-        </button>
-      </div>
-    </section>
+      <div id="analytics-summary-root"></div>
 
-    <section class="analytics-grid">
-      <div class="card chart-card">
-        <h3>Customers by Class</h3>
-        <canvas id="customers-class-chart"></canvas>
-      </div>
+      <section class="analytics-grid">
+        <div class="card chart-card">
+          <h3>Customers by Class</h3>
+          <canvas id="customers-class-chart"></canvas>
+        </div>
 
-      <div class="card chart-card">
-        <h3>Usage by Customer Class</h3>
-        <canvas id="usage-class-chart"></canvas>
-      </div>
+        <div class="card chart-card">
+          <h3>Usage by Customer Class</h3>
+          <canvas id="usage-class-chart"></canvas>
+        </div>
 
-      <div class="card chart-card">
-        <h3>Revenue Breakdown</h3>
-        <canvas id="revenue-chart"></canvas>
-      </div>
+        <div class="card chart-card">
+          <h3>Revenue Breakdown</h3>
+          <canvas id="revenue-chart"></canvas>
+        </div>
 
-      <div class="card chart-card">
-        <h3>NRW Trend</h3>
-        <canvas id="nrw-trend-chart"></canvas>
-      </div>
+        <div class="card chart-card">
+          <h3>NRW Trend</h3>
+          <canvas id="nrw-trend-chart"></canvas>
+        </div>
+      </section>
+
+      <section class="module-panel" style="margin-top:1rem;">
+        <div class="module-panel-header">
+          <div>
+            <h3 class="module-panel-title">Customer Anomalies</h3>
+            <p class="module-panel-subtitle">
+              Flags zero usage, sudden drops, spikes, statistical outliers, and possible stuck meters.
+            </p>
+          </div>
+        </div>
+
+        <div id="customer-anomalies-root"></div>
+      </section>
+
+      <section class="module-panel" style="margin-top:1rem;">
+        <div class="module-panel-header">
+          <div>
+            <h3 class="module-panel-title">DMA Trend Forecast</h3>
+            <p class="module-panel-subtitle">
+              Forecasted demand trends by DMA based on meter-read history.
+            </p>
+          </div>
+        </div>
+
+        <div id="dma-trends-root"></div>
+      </section>
     </section>
   `;
 
@@ -97,19 +140,23 @@ async function loadAnalytics() {
 
   destroyCharts();
 
-  const data = await getAnalyticsData(utility.id, month);
+  const [data, customers, reads] = await Promise.all([
+    getAnalyticsData(utility.id, month),
+    getCustomersByUtility(utility.id),
+    getMeterReadsByMonth(utility.id, month)
+  ]);
 
   renderBarChart(
     'customers-class-chart',
-    Object.keys(data.customersByClass),
-    Object.values(data.customersByClass),
+    Object.keys(data.customersByClass || {}),
+    Object.values(data.customersByClass || {}),
     'Customers'
   );
 
   renderBarChart(
     'usage-class-chart',
-    Object.keys(data.usageByClass),
-    Object.values(data.usageByClass),
+    Object.keys(data.usageByClass || {}),
+    Object.values(data.usageByClass || {}),
     'Gallons'
   );
 
@@ -117,20 +164,134 @@ async function loadAnalytics() {
     'revenue-chart',
     ['Water', 'Sewer', 'Fees', 'Taxes', 'Adjustments'],
     [
-      data.revenueSummary.water,
-      data.revenueSummary.sewer,
-      data.revenueSummary.fees,
-      data.revenueSummary.taxes,
-      data.revenueSummary.adjustments
+      data.revenueSummary?.water || 0,
+      data.revenueSummary?.sewer || 0,
+      data.revenueSummary?.fees || 0,
+      data.revenueSummary?.taxes || 0,
+      data.revenueSummary?.adjustments || 0
     ]
   );
 
   renderLineChart(
     'nrw-trend-chart',
-    data.nrwTrend.map((item) => item.month),
-    data.nrwTrend.map((item) => item.nrwPercent),
+    (data.nrwTrend || []).map((item) => item.month),
+    (data.nrwTrend || []).map((item) => item.nrwPercent),
     'NRW %'
   );
+
+  const utilityTrend = analyzeUtilityUsageTrend(reads);
+  const anomalies = detectCustomerAnomalies(reads);
+  const dmaTrends = analyzeDmaTrends(reads, customers);
+
+  const revenueForecast = forecastRevenue({
+    forecastUsage: utilityTrend.forecast_next_period_usage || utilityTrend.forecastUsage || 0,
+    ratePerThousandGallons: 6,
+    baseCharge: 15,
+    accountCount: customers.length
+  });
+
+  renderAnalyticsSummary({
+    utilityTrend,
+    revenueForecast,
+    reads,
+    customers
+  });
+
+  renderCustomerAnomalies(anomalies);
+  renderDmaTrends(dmaTrends);
+}
+
+function renderAnalyticsSummary({
+  utilityTrend,
+  revenueForecast,
+  reads,
+  customers
+}) {
+  const root = document.getElementById('analytics-summary-root');
+
+  if (!root) return;
+
+  root.innerHTML = `
+    <div class="module-kpis">
+      ${metricCard('Total Customers', customers.length)}
+      ${metricCard('Reads Analyzed', reads.length)}
+      ${metricCard('Utility Trend', utilityTrend.trend_direction || utilityTrend.trend || 'No data')}
+      ${metricCard('Forecast Usage', formatNumber(utilityTrend.forecast_next_period_usage || utilityTrend.forecastUsage || 0))}
+      ${metricCard('Forecast Revenue', '$' + formatNumber(revenueForecast.totalForecastRevenue || 0))}
+    </div>
+  `;
+}
+
+function renderCustomerAnomalies(anomalies = []) {
+  const root = document.getElementById('customer-anomalies-root');
+
+  if (!root) return;
+
+  if (!anomalies.length) {
+    root.innerHTML = `
+      <div class="module-empty">
+        No customer anomalies detected for this period.
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = `
+    <div class="compact-list">
+      ${anomalies.slice(0, 15).map((item) => `
+        <div class="mini-card">
+          <strong>${safe(item.customer_name || item.customer_key || 'Customer')}</strong><br />
+
+          <small>
+            Meter: ${safe(item.meter_number || '—')}
+            • Period: ${safe(item.latest_period || '—')}
+            • Latest Usage: ${formatNumber(item.latest_usage)}
+            • Avg: ${formatNumber(item.average_usage)}
+            • Risk Score: ${formatNumber(item.risk_score)}
+          </small>
+
+          <div style="margin-top:.5rem;">
+            ${(item.risk_flags || []).map((flag) => `
+              <span class="status-badge status-warning">
+                ${safe(flag)}
+              </span>
+            `).join(' ')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderDmaTrends(dmaTrends = []) {
+  const root = document.getElementById('dma-trends-root');
+
+  if (!root) return;
+
+  if (!dmaTrends.length) {
+    root.innerHTML = `
+      <div class="module-empty">
+        No DMA trend data available yet.
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = `
+    <div class="compact-list">
+      ${dmaTrends.slice(0, 10).map((dma) => `
+        <div class="mini-card">
+          <strong>${safe(dma.dma_name || 'DMA')}</strong><br />
+
+          <small>
+            Trend: ${safe(dma.trend)}
+            • Forecast Usage: ${formatNumber(dma.forecastUsage)}
+            • Months: ${dma.months?.length || 0}
+          </small>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 function renderBarChart(canvasId, labels, values, label) {
@@ -210,10 +371,35 @@ function destroyCharts() {
   chartInstances = [];
 }
 
+function metricCard(label, value) {
+  return `
+    <div class="kpi-card">
+      <div class="kpi-label">${safe(label)}</div>
+      <div class="kpi-value">${safe(value)}</div>
+    </div>
+  `;
+}
+
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
 function val(id) {
   return document.getElementById(id)?.value?.trim() || '';
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString(undefined, {
+    maximumFractionDigits: 2
+  });
+}
+
+function safe(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
 }
