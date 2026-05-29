@@ -74,9 +74,6 @@ export function canAccessTab(role, tab) {
 export function getAllowedTabs(role) {
   return ROLE_PERMISSIONS[role] || [];
 }
-export function canAccessTab(role, tabId) {
-  return getAllowedTabs(role).includes(tabId);
-}
 
 export function requireTabAccess(tabId) {
   const role = window.OFORI_AUTH_ROLE;
