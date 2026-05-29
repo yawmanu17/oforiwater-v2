@@ -163,11 +163,13 @@ export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
     </section>
   `;
 
-  document
-    .getElementById('load-analytics-btn')
-    ?.addEventListener('click', loadAnalytics);
+  wireAnalyticsTabs();
 
-  await loadAnalytics();
+document
+  .getElementById('load-analytics-btn')
+  ?.addEventListener('click', loadAnalytics);
+
+await loadAnalytics();
 }
 
 async function loadAnalytics() {
@@ -245,6 +247,13 @@ const importedAnomalies = importedRows.length
   customers,
   importedRows,
   importedTrend
+});
+
+renderForecastSummary({
+  utilityTrend,
+  revenueForecast,
+  importedTrend,
+  importedRows
 });
 
   renderCustomerAnomalies(anomalies);
@@ -420,6 +429,57 @@ function renderLineChart(canvasId, labels, values, label) {
       }
     })
   );
+}
+
+
+function renderForecastSummary({
+  utilityTrend,
+  revenueForecast,
+  importedTrend = null,
+  importedRows = []
+}) {
+  const root = document.getElementById('forecast-summary-root');
+
+  if (!root) return;
+
+  root.innerHTML = `
+    <div class="module-kpis">
+      ${metricCard(
+        'Utility Forecast Usage',
+        formatNumber(utilityTrend.forecast_next_period_usage || utilityTrend.forecastUsage || 0)
+      )}
+
+      ${metricCard(
+        'Utility Trend',
+        utilityTrend.trend_direction || utilityTrend.trend || 'No data'
+      )}
+
+      ${metricCard(
+        'Forecast Revenue',
+        '$' + formatNumber(revenueForecast.totalForecastRevenue || 0)
+      )}
+
+      ${metricCard(
+        'Imported Rows',
+        importedRows.length
+      )}
+
+      ${metricCard(
+        'Imported Forecast',
+        importedTrend
+          ? formatNumber(importedTrend.forecast_next_period_usage || importedTrend.forecastUsage || 0)
+          : 'No import'
+      )}
+    </div>
+
+    <section class="module-panel" style="margin-top:1rem;">
+      <h3 class="module-panel-title">Forecast Interpretation</h3>
+      <p>
+        Forecasts are based on recent consumption history. Imported AMI, AMR, manual,
+        or billing data can improve trend reliability when more periods are uploaded.
+      </p>
+    </section>
+  `;
 }
 
 function wireAnalyticsTabs() {
