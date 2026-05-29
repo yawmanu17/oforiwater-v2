@@ -54,7 +54,6 @@ export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
     <section class="module-page">
       <div class="module-toolbar">
         <div class="module-title-block">
-          <div class="module-eyebrow">Predictive Utility Intelligence</div>
           <h2>Analytics & Forecasting</h2>
           <p>
             Analyze utility consumption trends, customer anomalies, DMA demand trends,
@@ -73,55 +72,94 @@ export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
         </div>
       </div>
 
-      <div id="analytics-summary-root"></div>
+      <div class="button-row analytics-tabs">
+  <button class="btn-primary analytics-tab-btn" data-section="overview" type="button">
+    Overview
+  </button>
 
-      <section class="analytics-grid">
-        <div class="card chart-card">
-          <h3>Customers by Class</h3>
-          <canvas id="customers-class-chart"></canvas>
-        </div>
+  <button class="btn-secondary analytics-tab-btn" data-section="anomalies" type="button">
+    Customer Anomalies
+  </button>
 
-        <div class="card chart-card">
-          <h3>Usage by Customer Class</h3>
-          <canvas id="usage-class-chart"></canvas>
-        </div>
+  <button class="btn-secondary analytics-tab-btn" data-section="dma" type="button">
+    DMA Trends
+  </button>
 
-        <div class="card chart-card">
-          <h3>Revenue Breakdown</h3>
-          <canvas id="revenue-chart"></canvas>
-        </div>
+  <button class="btn-secondary analytics-tab-btn" data-section="forecast" type="button">
+    Forecasts
+  </button>
+</div>
 
-        <div class="card chart-card">
-          <h3>NRW Trend</h3>
-          <canvas id="nrw-trend-chart"></canvas>
-        </div>
-      </section>
+<div id="analytics-section-overview" class="analytics-section">
+  <div id="analytics-summary-root"></div>
 
-      <section class="module-panel" style="margin-top:1rem;">
-        <div class="module-panel-header">
-          <div>
-            <h3 class="module-panel-title">Customer Anomalies</h3>
-            <p class="module-panel-subtitle">
-              Flags zero usage, sudden drops, spikes, statistical outliers, and possible stuck meters.
-            </p>
-          </div>
-        </div>
+  <section class="analytics-grid">
+    <div class="card chart-card">
+      <h3>Customers by Class</h3>
+      <canvas id="customers-class-chart"></canvas>
+    </div>
 
-        <div id="customer-anomalies-root"></div>
-      </section>
+    <div class="card chart-card">
+      <h3>Usage by Customer Class</h3>
+      <canvas id="usage-class-chart"></canvas>
+    </div>
 
-      <section class="module-panel" style="margin-top:1rem;">
-        <div class="module-panel-header">
-          <div>
-            <h3 class="module-panel-title">DMA Trend Forecast</h3>
-            <p class="module-panel-subtitle">
-              Forecasted demand trends by DMA based on meter-read history.
-            </p>
-          </div>
-        </div>
+    <div class="card chart-card">
+      <h3>Revenue Breakdown</h3>
+      <canvas id="revenue-chart"></canvas>
+    </div>
 
-        <div id="dma-trends-root"></div>
-      </section>
+    <div class="card chart-card">
+      <h3>NRW Trend</h3>
+      <canvas id="nrw-trend-chart"></canvas>
+    </div>
+  </section>
+</div>
+
+<div id="analytics-section-anomalies" class="analytics-section" hidden>
+  <section class="module-panel" style="margin-top:1rem;">
+    <div class="module-panel-header">
+      <div>
+        <h3 class="module-panel-title">Customer Anomalies</h3>
+        <p class="module-panel-subtitle">
+          Flags zero usage, sudden drops, spikes, statistical outliers, and possible stuck meters.
+        </p>
+      </div>
+    </div>
+
+    <div id="customer-anomalies-root"></div>
+  </section>
+</div>
+
+<div id="analytics-section-dma" class="analytics-section" hidden>
+  <section class="module-panel" style="margin-top:1rem;">
+    <div class="module-panel-header">
+      <div>
+        <h3 class="module-panel-title">DMA Trend Forecast</h3>
+        <p class="module-panel-subtitle">
+          Forecasted demand trends by DMA based on meter-read history.
+        </p>
+      </div>
+    </div>
+
+    <div id="dma-trends-root"></div>
+  </section>
+</div>
+
+<div id="analytics-section-forecast" class="analytics-section" hidden>
+  <section class="module-panel" style="margin-top:1rem;">
+    <div class="module-panel-header">
+      <div>
+        <h3 class="module-panel-title">Forecast Summary</h3>
+        <p class="module-panel-subtitle">
+          Forecasted utility demand and revenue based on available reads.
+        </p>
+      </div>
+    </div>
+
+    <div id="forecast-summary-root"></div>
+  </section>
+  </div>
     </section>
   `;
 
@@ -382,6 +420,24 @@ function renderLineChart(canvasId, labels, values, label) {
       }
     })
   );
+}
+
+function wireAnalyticsTabs() {
+  document.querySelectorAll('.analytics-tab-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      const section = button.dataset.section;
+
+      document.querySelectorAll('.analytics-section').forEach((panel) => {
+        panel.hidden = panel.id !== `analytics-section-${section}`;
+      });
+
+      document.querySelectorAll('.analytics-tab-btn').forEach((btn) => {
+        const active = btn.dataset.section === section;
+        btn.classList.toggle('btn-primary', active);
+        btn.classList.toggle('btn-secondary', !active);
+      });
+    });
+  });
 }
 
 function destroyCharts() {
