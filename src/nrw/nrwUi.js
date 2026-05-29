@@ -15,6 +15,10 @@ import {
 } from '../utils/calculations.js';
 
 import { calculateNrwMetrics } from './nrwEngine.js';
+import {
+  analyzeNrwDataReadiness,
+  calculateNormalizedNrwMetrics
+} from './nrwMethodEngine.js';
 
 let dmas = [];
 let customers = [];
@@ -182,6 +186,13 @@ function nrwCalculatorHtml() {
           <input id="nrw-retail-unit-cost" type="number" step="0.01" />
         </label>
       </div>
+      <label>Population Served
+        <input id="nrw-population-served" type="number" step="1" />
+      </label>
+
+      <label>Days in Period
+        <input id="nrw-days-in-period" type="number" step="1" value="30" />
+      </label>
 
       <div class="button-row">
         <button id="calculate-nrw-btn" class="btn-primary" type="button">
@@ -226,7 +237,7 @@ async function refreshNrw() {
 }
 
 function calculateAndRenderNrw() {
-  const metrics = calculateNrwMetrics({
+  const input = {
     production: val('nrw-production'),
     purchased_water: val('nrw-purchased-water'),
     exported_water: val('nrw-exported-water'),
@@ -245,10 +256,29 @@ function calculateAndRenderNrw() {
     avg_pressure_psi: val('nrw-avg-pressure-psi'),
 
     variable_production_cost: val('nrw-variable-production-cost'),
-    retail_unit_cost: val('nrw-retail-unit-cost')
-  });
+    retail_unit_cost: val('nrw-retail-unit-cost'),
 
-  renderNrwResults(metrics);
+    population_served: val('nrw-population-served'),
+    days_in_period: val('nrw-days-in-period')
+  };
+
+  const metrics = calculateNrwMetrics(input);
+
+  const normalized = calculateNormalizedNrwMetrics(
+    input,
+    metrics
+  );
+
+  const readiness = analyzeNrwDataReadiness(
+    input,
+    metrics
+  );
+
+  renderNrwResults(
+    metrics,
+    normalized,
+    readiness
+  );
 }
 
 function renderNrwResults(metrics) {
@@ -272,6 +302,10 @@ function renderNrwResults(metrics) {
       ${metricCard('CRLI Estimate', nullableNumber(metrics.crli))}
       ${metricCard('Loss Cost', `$${formatNumber(metrics.totalLossCost)}`)}
       ${metricCard('Performance', metrics.performanceBand)}
+      ${metricCard('GPD / Connection', nullableNumber(normalized.gpdPerConnection))}
+      ${metricCard('GPD / Person', nullableNumber(normalized.gpdPerPerson))}
+      ${metricCard('NRW GPD', nullableNumber(normalized.nrwGpd))}
+      ${metricCard('Real Loss GPD', nullableNumber(normalized.realLossGpd))}
     </div>
 
     <section class="module-panel" style="margin-top:1rem;">
@@ -283,6 +317,53 @@ function renderNrwResults(metrics) {
         performance beyond simple NRW percentage.
       </p>
     </section>
+
+    <section class="module-panel" style="margin-top:1rem;">
+  <h3 class="module-panel-title">Valid Methods From Current Data</h3>
+
+  ${readiness.methods.length ? `
+    <div class="compact-list">
+      ${readiness.methods.map((method) => `
+        <div class="mini-card">
+          <strong>${safe(method.name)}</strong><br />
+          <small>
+            Metric: ${safe(method.metric)}
+            • Confidence: ${safe(method.confidence)}
+          </small>
+          <p>${safe(method.usedFor)}</p>
+        </div>
+      `).join('')}
+    </div>
+  ` : `
+    <div class="module-empty">
+      Not enough data to calculate formal NRW methods yet.
+    </div>
+  `}
+</section>
+
+<section class="module-panel" style="margin-top:1rem;">
+  <h3 class="module-panel-title">Missing Data / Improvement Needs</h3>
+
+  ${readiness.missing.length ? `
+    <ul>
+      ${readiness.missing.map((item) => `<li>${safe(item)}</li>`).join('')}
+    </ul>
+  ` : `
+    <p>All major data fields are available for advanced NRW analysis.</p>
+  `}
+</section>
+
+<section class="module-panel" style="margin-top:1rem;">
+  <h3 class="module-panel-title">Recommended Strategy</h3>
+
+  ${readiness.recommendations.length ? `
+    <ul>
+      ${readiness.recommendations.map((item) => `<li>${safe(item)}</li>`).join('')}
+    </ul>
+  ` : `
+    <p>NRW indicators are stable based on the provided data.</p>
+  `}
+</section>
   `;
 }
 
