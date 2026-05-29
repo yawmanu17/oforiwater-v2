@@ -13,7 +13,7 @@ import {
   emptyState,
   safe
 } from '../ui/moduleLayout.js';
-import { logAuditEvent } from '../audit/logAuditEvent.js';
+
 
 let dmas = [];
 let customers = [];
