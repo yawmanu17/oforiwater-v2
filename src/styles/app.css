@@ -1015,3 +1015,54 @@ textarea:focus{
 .toast-info {
   border-left-color: #06b6d4;
 }
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #dbeafe;
+  word-break: break-word;
+}
+
+.data-table th:nth-child(1),
+.data-table td:nth-child(1) {
+  width: 170px;
+}
+
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+  width: 210px;
+}
+
+.data-table th:nth-child(3),
+.data-table td:nth-child(3) {
+  width: 190px;
+}
+
+.data-table th:nth-child(4),
+.data-table td:nth-child(4) {
+  width: 170px;
+}
+
+.data-table th:nth-child(5),
+.data-table td:nth-child(5) {
+  width: auto;
+}
+
+.status-badge {
+  display: inline-block;
+  white-space: normal;
+  line-height: 1.25;
+}

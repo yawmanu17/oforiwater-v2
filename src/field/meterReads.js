@@ -536,7 +536,7 @@ async function saveRead(moveNext = false) {
       }
     });
 
-    if (photoUrl) {
+        if (photoUrl) {
       await logAuditEvent({
         action: 'meter_read_photo_uploaded',
         entityType: 'meter_read',
@@ -551,25 +551,21 @@ async function saveRead(moveNext = false) {
 
     showSuccess('Meter read saved.');
 
+    reads = await getMeterReadsByMonth(utility.id, payload.billing_month);
+
+    await renderRecentReads();
+
     if (moveNext) {
-      moveToNextCustomer?.();
+      goToNextCustomer();
+    } else {
+      clearReadFields();
+      renderRefresh();
     }
   } catch (error) {
     console.error('Meter read save failed:', error);
-
     showError(error.message || 'Meter read could not be saved.');
   }
 }
-
-showSuccess('Meter read saved.');
-  reads = await getMeterReadsByMonth(utility.id, payload.billing_month);
-
-  if (moveNext) {
-    goToNextCustomer();
-  } else {
-    clearReadFields();
-    renderRefresh();
-  }
 
   function goToNextCustomer() {
   if (!customers.length) return;
