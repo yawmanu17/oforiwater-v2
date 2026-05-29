@@ -22,6 +22,7 @@ import {
 import {
   buildBusinessCase
 } from './businessCaseEngine.js';
+import { prioritizeDmas } from './dmaPriorityEngine.js';
 
 let dmas = [];
 let customers = [];
@@ -50,6 +51,10 @@ export async function initNrwUi(rootId = 'dashboard-module-root') {
 function render(root, billingMonth) {
   const models = buildDmaNrwModels();
   const totals = summarizeModels(models);
+  const prioritizedDmas = prioritizeDmas(models, {
+  productionCost: 0.003,
+  retailRate: 0.006
+});
 
   root.innerHTML = `
     <section class="module-page">
@@ -110,6 +115,7 @@ function render(root, billingMonth) {
           </div>
 
           ${dmaTableHtml(models)}
+          ${dmaPriorityHtml(prioritizedDmas)}
         </section>
       </div>
   `;
@@ -521,6 +527,58 @@ function dmaTableHtml(models) {
   `;
 }
 
+function dmaPriorityHtml(items) {
+  if (!items.length) {
+    return '';
+  }
+
+  return `
+    <section class="module-panel" style="margin-top:1rem;">
+      <div class="module-panel-header">
+        <div>
+          <h3 class="module-panel-title">DMA Prioritization</h3>
+          <p class="module-panel-subtitle">
+            Ranked by NRW percentage, NRW volume, and estimated annual loss exposure.
+          </p>
+        </div>
+      </div>
+
+      <div class="compact-list">
+        ${items.slice(0, 5).map((item, index) => `
+          <div class="mini-card">
+            <strong>
+              #${index + 1} ${safe(item.dma.name)}
+            </strong><br />
+
+            <small>
+              NRW: ${formatPercent(item.nrwPercent)}
+              • Volume: ${formatGallons(item.nrwGal)}
+              • Annual Loss: $${formatNumber(item.annualLossCost)}
+            </small>
+
+            <div style="margin-top:.5rem;">
+              <span class="status-badge ${priorityClass(item.priorityLevel)}">
+                ${safe(item.priorityLevel)}
+              </span>
+            </div>
+
+            <p style="margin-top:.5rem;">
+              ${safe(item.recommendedAction)}
+            </p>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function priorityClass(level) {
+  if (level === 'Critical') return 'status-bad';
+  if (level === 'High') return 'status-warning';
+  if (level === 'Moderate') return 'status-watch';
+
+  return 'status-ok';
+}
 function nullableNumber(value) {
   if (value === null || value === undefined || Number.isNaN(value)) {
     return 'Insufficient data';
