@@ -13,6 +13,7 @@ admin: [
   'routes',
   'analytics',
   'nrw',
+  'nrw_import',
   'audit',
   'data',
   'offline_queue',
@@ -34,6 +35,7 @@ supervisor: [
   'routes',
   'analytics',
   'nrw',
+  'nrw_import',
   'audit',
   'data',
   'offline_queue',
@@ -54,7 +56,8 @@ meter_reader: [
     'billing',
     'adjustments',
     'billing_reports',
-    'analytics'
+    'analytics',
+    'nrw_import'
   ],
 
   nrw_analyst: [
@@ -62,7 +65,8 @@ meter_reader: [
     'field',
     'map',
     'assets',
-    'nrw'
+    'nrw',
+    'nrw_import'
   ]
 };
 

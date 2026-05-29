@@ -23,6 +23,7 @@ import { initUtilitySetup } from './utilitySetup.js';
 import { applyUtilityTheme } from '../ui/theme.js';
 import { initTeamUsersUi } from './teamUsers.js';
 import { initAccountSettingsUi } from './accountSettings.js';
+import { initNrwImportUi } from '../nrw/nrwImportUi.js';
 
 const TAB_CONFIG = [
   { id: 'dashboard', label: 'Dashboard', init: renderDashboardHome },
@@ -43,6 +44,7 @@ const TAB_CONFIG = [
   { id: 'offline_queue', label: 'Offline Queue', init: initOfflineQueueUi },
   { id: 'team', label: 'Team', init: initTeamUsersUi },
   { id: 'account', label: 'My Account', init: initAccountSettingsUi },
+  { id: 'nrw_import', label: 'NRW Import', init: initNrwImportUi },
 ];
 
 let offlineListenersAttached = false;

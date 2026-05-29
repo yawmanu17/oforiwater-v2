@@ -195,10 +195,14 @@ function nrwCalculatorHtml() {
       </label>
 
       <div class="button-row">
-        <button id="calculate-nrw-btn" class="btn-primary" type="button">
-          Calculate NRW Metrics
-        </button>
-      </div>
+      <button id="load-imported-nrw-btn" class="btn-secondary" type="button">
+        Load Imported Data
+      </button>
+
+      <button id="calculate-nrw-btn" class="btn-primary" type="button">
+        Calculate NRW Metrics
+      </button>
+    </div>
 
       <div id="nrw-calculation-results" style="margin-top:1rem;"></div>
     </section>
@@ -213,6 +217,10 @@ function wireEvents() {
   document
     .getElementById('calculate-nrw-btn')
     ?.addEventListener('click', calculateAndRenderNrw);
+
+  document
+    .getElementById('load-imported-nrw-btn')
+    ?.addEventListener('click', loadImportedNrwData);
 }
 
 async function refreshNrw() {
@@ -280,8 +288,7 @@ function calculateAndRenderNrw() {
     readiness
   );
 }
-
-function renderNrwResults(metrics) {
+function renderNrwResults(metrics, normalized, readiness) {
   const root = document.getElementById('nrw-calculation-results');
 
   if (!root) return;
@@ -492,6 +499,38 @@ function formatNumber(value) {
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
+}
+
+function loadImportedNrwData() {
+  setValue(
+    'nrw-production',
+    window.OFORI_NRW_IMPORTED_PRODUCTION || ''
+  );
+
+  setValue(
+    'nrw-purchased-water',
+    window.OFORI_NRW_IMPORTED_PURCHASED || ''
+  );
+
+  setValue(
+    'nrw-exported-water',
+    window.OFORI_NRW_IMPORTED_EXPORTED || ''
+  );
+
+  setValue(
+    'nrw-billed-metered',
+    window.OFORI_NRW_IMPORTED_BILLED_USAGE || ''
+  );
+
+  calculateAndRenderNrw();
+}
+
+function setValue(id, value) {
+  const el = document.getElementById(id);
+
+  if (el) {
+    el.value = value;
+  }
 }
 
 function val(id) {
