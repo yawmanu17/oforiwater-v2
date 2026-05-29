@@ -1,14 +1,26 @@
 import { supabase } from './client.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
 
 export async function createCustomer(payload) {
-  const { data, error } = await supabase
+  const { data: customer, error } = await supabase
     .from('customers')
     .insert(payload)
-    .select()
+    .select('*')
     .single();
 
   if (error) throw error;
-  return data;
+
+  await logAuditEvent({
+    action: 'customer_created',
+    entityType: 'customer',
+    entityId: customer.id,
+    details: {
+      account_number: customer.account_number,
+      customer_name: customer.customer_name
+    }
+  });
+
+  return customer;
 }
 
 export async function upsertCustomer(payload) {
@@ -21,6 +33,17 @@ export async function upsertCustomer(payload) {
     .single();
 
   if (error) throw error;
+
+  await logAuditEvent({
+    action: 'customer_upserted',
+    entityType: 'customer',
+    entityId: data.id,
+    details: {
+      account_number: data.account_number,
+      customer_name: data.customer_name
+    }
+  });
+
   return data;
 }
 
@@ -44,5 +67,16 @@ export async function updateCustomer(customerId, payload) {
     .single();
 
   if (error) throw error;
+
+  await logAuditEvent({
+    action: 'customer_updated',
+    entityType: 'customer',
+    entityId: data.id,
+    details: {
+      account_number: data.account_number,
+      customer_name: data.customer_name
+    }
+  });
+
   return data;
 }

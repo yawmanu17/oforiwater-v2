@@ -5,6 +5,7 @@ import { updateDma } from '../supabase/dmas.js';
 import { uploadUtilityLogo } from '../supabase/storage.js';
 import { applyUtilityTheme } from '../ui/theme.js';
 import { requireTabAccess } from '../auth/permissions.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
 
 let currentUtility = null;
 let editingDmaId = null;
@@ -230,6 +231,14 @@ async function saveUtility() {
   setValue('utility-logo-url', logoUrl);
 
   alert('Utility profile saved successfully.');
+  await logAuditEvent({
+  action: 'utility_updated',
+  entityType: 'utility',
+  entityId: utility.id,
+  details: {
+    utility_name: utility.name
+  }
+});
 }
 
 async function saveDma() {

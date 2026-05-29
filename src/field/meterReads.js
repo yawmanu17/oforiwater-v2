@@ -1,6 +1,7 @@
 import { authState } from '../auth/auth.js';
 import { getCustomersByUtility } from '../supabase/customers.js';
 import { completeRouteStopByCustomer } from '../supabase/routes.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
 import {
   saveMeterRead,
   getMeterReadsByMonth
@@ -365,6 +366,16 @@ async function saveRead(moveNext = false) {
 
   alert('Meter read saved.');
 }
+
+await logAuditEvent({
+  action: 'meter_read_recorded',
+  entityType: 'meter_read',
+  entityId: read.id,
+  details: {
+    customer_id: read.customer_id,
+    reading: read.current_reading
+  }
+});
 
   reads = await getMeterReadsByMonth(utility.id, payload.billing_month);
 

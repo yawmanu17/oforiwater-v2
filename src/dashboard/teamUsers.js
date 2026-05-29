@@ -10,6 +10,7 @@ import {
 } from '../supabase/profiles.js';
 
 import { sendStaffInviteEmail } from '../supabase/email.js';
+import { logAuditEvent } from '../audit/logAuditEvent.js';
 
 let profiles = [];
 let invites = [];
@@ -230,6 +231,25 @@ function wireEvents(rootId) {
         invited_by: authState.profile.id
       });
 
+      await createStaffInvite({
+        utility_id: authState.utility.id,
+        email,
+        full_name: fullName,
+        role,
+        status: 'pending',
+        invited_by: authState.profile.id
+      });
+
+      await logAuditEvent({
+        action: 'staff_invite_created',
+        entityType: 'staff_invite',
+        entityId: email,
+        details: {
+          role,
+          full_name: fullName
+        }
+      });
+      
       await sendStaffInviteEmail({
         email,
         fullName,
