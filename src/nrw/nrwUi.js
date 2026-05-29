@@ -24,6 +24,7 @@ import {
 } from './businessCaseEngine.js';
 import { prioritizeDmas } from './dmaPriorityEngine.js';
 import { buildWaterLossActionPlan } from './actionPlanEngine.js';
+import { buildFundingJustification } from './fundingEngine.js';
 
 
 let dmas = [];
@@ -320,6 +321,16 @@ function renderNrwResults(metrics, normalized, readiness) {
   readiness
 });
 
+const funding = buildFundingJustification({
+  metrics,
+  businessCase,
+  prioritizedDmas: prioritizeDmas(buildDmaNrwModels(), {
+    productionCost: 0.003,
+    retailRate: 0.006
+  }),
+  actionPlan
+});
+
   root.innerHTML = `
     <div class="module-kpis">
       ${metricCard('System Input Volume', formatNumber(metrics.systemInputVolume))}
@@ -457,6 +468,36 @@ function renderNrwResults(metrics, normalized, readiness) {
       </ul>
     </div>
   `).join('')}
+</section>
+<section class="module-panel" style="margin-top:1rem;">
+  <h3 class="module-panel-title">Capital Improvement & Funding Justification</h3>
+
+  <p>
+    Funding Readiness:
+    <strong>${safe(funding.fundingReadiness)}</strong>
+  </p>
+
+  <div class="compact-list">
+    ${funding.projects.map((project) => `
+      <div class="mini-card">
+        <strong>${safe(project.type)}</strong><br />
+
+        <small>
+          Priority: ${safe(project.priority)}
+          • Cost Range: $${formatNumber(project.estimatedCostLow)}
+          - $${formatNumber(project.estimatedCostHigh)}
+          • Estimated Annual Recovery: $${formatNumber(project.estimatedAnnualRecovery)}
+        </small>
+
+        <p>${safe(project.rationale)}</p>
+
+        <small>
+          Funding Fit:
+          ${project.fundingFit.map((item) => safe(item)).join(', ')}
+        </small>
+      </div>
+    `).join('')}
+  </div>
 </section>
   `;
 }
