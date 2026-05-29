@@ -19,6 +19,9 @@ import {
   analyzeNrwDataReadiness,
   calculateNormalizedNrwMetrics
 } from './nrwMethodEngine.js';
+import {
+  buildBusinessCase
+} from './businessCaseEngine.js';
 
 let dmas = [];
 let customers = [];
@@ -109,7 +112,6 @@ function render(root, billingMonth) {
           ${dmaTableHtml(models)}
         </section>
       </div>
-    </section>
   `;
 }
 
@@ -206,6 +208,7 @@ function nrwCalculatorHtml() {
 
       <div id="nrw-calculation-results" style="margin-top:1rem;"></div>
     </section>
+ 
   `;
 }
 
@@ -293,6 +296,8 @@ function renderNrwResults(metrics, normalized, readiness) {
 
   if (!root) return;
 
+  const businessCase = buildBusinessCase(metrics);
+
   root.innerHTML = `
     <div class="module-kpis">
       ${metricCard('System Input Volume', formatNumber(metrics.systemInputVolume))}
@@ -309,6 +314,30 @@ function renderNrwResults(metrics, normalized, readiness) {
       ${metricCard('CRLI Estimate', nullableNumber(metrics.crli))}
       ${metricCard('Loss Cost', `$${formatNumber(metrics.totalLossCost)}`)}
       ${metricCard('Performance', metrics.performanceBand)}
+      ${metricCard(
+        'Real Loss Cost',
+        '$' + formatNumber(businessCase.realLossCost)
+      )}
+
+      ${metricCard(
+        'Revenue Risk',
+        '$' + formatNumber(businessCase.apparentLossRevenueRisk)
+      )}
+
+      ${metricCard(
+        'Annual Impact',
+        '$' + formatNumber(businessCase.totalAnnualImpact)
+      )}
+
+      ${metricCard(
+        'Priority',
+        businessCase.priority
+      )}
+
+      ${metricCard(
+        'Payback',
+        businessCase.payback
+      )}
       ${metricCard('GPD / Connection', nullableNumber(normalized.gpdPerConnection))}
       ${metricCard('GPD / Person', nullableNumber(normalized.gpdPerPerson))}
       ${metricCard('NRW GPD', nullableNumber(normalized.nrwGpd))}
@@ -370,6 +399,17 @@ function renderNrwResults(metrics, normalized, readiness) {
   ` : `
     <p>NRW indicators are stable based on the provided data.</p>
   `}
+</section>
+<section class="module-panel" style="margin-top:1rem;">
+  <h3 class="module-panel-title">
+    Business Case Recommendation
+  </h3>
+
+  <ul>
+    ${businessCase.strategy
+      .map(item => `<li>${safe(item)}</li>`)
+      .join('')}
+  </ul>
 </section>
   `;
 }
