@@ -237,12 +237,12 @@ function wireEvents(rootId) {
         utilityName: authState.utility.name
       });
 
-      alert('Staff invite created and email sent.');
+      showSuccess('Staff invite created and email sent.');
 
       await initTeamUsersUi(rootId);
     } catch (error) {
       console.error('Invite failed:', error);
-      alert(error.message || 'Staff invite failed.');
+      showError(error.message || 'Invite failed.');
     }
   });
 
