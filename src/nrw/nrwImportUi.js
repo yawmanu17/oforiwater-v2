@@ -4,6 +4,11 @@ import {
   summarizeImportedReads
 } from './nrwImportEngine.js';
 
+import {
+  validateImportedReads,
+  validateProductionRows
+} from './importValidationEngine.js';
+
 let importedRows = [];
 let importedHeaders = [];
 let normalizedReads = [];
@@ -200,12 +205,13 @@ window.OFORI_NRW_IMPORTED_EXPORTED = rows.reduce(
 );
 
 const summary = summarizeImportedReads(normalizedReads);
+const validation = validateImportedReads(normalizedReads);
 
 window.OFORI_IMPORTED_USAGE_ROWS = normalizedReads;
 window.OFORI_NRW_IMPORTED_READS = normalizedReads;
 window.OFORI_NRW_IMPORTED_BILLED_USAGE = summary.total_adjusted_usage;
 
-renderReadSummary(summary, normalizedReads);
+renderReadSummary(summary, normalizedReads, validation);
 }
 
 function collectMapping(importType) {
@@ -246,7 +252,7 @@ function productionMappingFields() {
   ];
 }
 
-function renderReadSummary(summary, rows) {
+function renderReadSummary(summary, rows, validation) {
   const root = document.getElementById('nrw-import-summary-root');
 
   if (!root) return;
@@ -267,6 +273,7 @@ function renderReadSummary(summary, rows) {
     </section>
 
     ${previewNormalizedRows(rows)}
+    ${validationHtml(validation)}
   `;
 }
 
@@ -285,6 +292,9 @@ function renderProductionSummary(rows) {
     { production: 0, purchased: 0, exported: 0 }
   );
 
+  const validation = validateProductionRows(rows);
+  renderProductionSummary(rows, validation);
+
   root.innerHTML = `
     <div class="module-kpis">
       ${metricCard('Production', formatNumber(totals.production))}
@@ -292,6 +302,38 @@ function renderProductionSummary(rows) {
       ${metricCard('Exported Water', formatNumber(totals.exported))}
       ${metricCard('System Input Volume', formatNumber(totals.production + totals.purchased - totals.exported))}
     </div>
+  `;
+}
+
+function validationHtml(validation) {
+  if (!validation) return '';
+
+  return `
+    <section class="module-panel" style="margin-top:1rem;">
+      <h3 class="module-panel-title">Import Data Quality</h3>
+
+      <div class="module-kpis">
+        ${metricCard('Quality Score', `${validation.score}%`)}
+        ${metricCard('Ready for NRW', validation.readiness.nrw ? 'Yes' : 'No')}
+        ${metricCard('Ready for Trends', validation.readiness.trend ? 'Yes' : 'No')}
+        ${metricCard('Ready for DMA', validation.readiness.dma ? 'Yes' : 'Partial / No')}
+      </div>
+
+      ${validation.issues.length ? `
+        <div class="compact-list" style="margin-top:1rem;">
+          ${validation.issues.slice(0, 15).map((item) => `
+            <div class="mini-card">
+              <strong>Row ${item.rowNumber}</strong><br />
+              <small>${safe(item.severity.toUpperCase())}: ${safe(item.message)}</small>
+            </div>
+          `).join('')}
+        </div>
+      ` : `
+        <div class="module-empty">
+          No major issues detected.
+        </div>
+      `}
+    </section>
   `;
 }
 

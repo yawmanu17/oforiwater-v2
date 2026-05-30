@@ -23,6 +23,7 @@ import { getMeterReadsByMonth } from '../supabase/meterReads.js';
 import { analyzeUtilityUsageTrend, detectCustomerAnomalies } from './trendEngine.js';
 import { analyzeDmaTrends } from './dmaAnalytics.js';
 import { forecastRevenue } from './revenueForecastEngine.js';
+import { buildCustomerConsumptionProfile } from './customerProfileEngine.js';
 
 Chart.register(
   BarController,
@@ -39,6 +40,8 @@ Chart.register(
 );
 
 let chartInstances = [];
+let latestCustomers = [];
+let latestReads = [];
 
 export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
   requireTabAccess('analytics');
@@ -88,6 +91,10 @@ export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
   <button class="btn-secondary analytics-tab-btn" data-section="forecast" type="button">
     Forecasts
   </button>
+
+  <button class="btn-secondary analytics-tab-btn" data-section="customer-profile" type="button">
+  Customer Profiles
+</button>
 </div>
 
 <div id="analytics-section-overview" class="analytics-section">
@@ -160,12 +167,41 @@ export async function initAnalyticsUi(rootId = 'dashboard-module-root') {
     <div id="forecast-summary-root"></div>
   </section>
   </div>
+  <div id="analytics-section-customer-profile" class="analytics-section" hidden>
+  <section class="module-panel" style="margin-top:1rem;">
+    <div class="module-panel-header">
+      <div>
+        <h3 class="module-panel-title">Customer Consumption Profile</h3>
+        <p class="module-panel-subtitle">
+          Search a customer to review usage trend, forecast, leak risk, meter risk, and revenue impact.
+        </p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <label>Search Customer
+        <input id="customer-profile-search" placeholder="Account, meter, or customer name" />
+      </label>
+    </div>
+
+    <div class="button-row">
+      <button id="load-customer-profile-btn" class="btn-primary" type="button">
+        Analyze Customer
+      </button>
+    </div>
+
+    <div id="customer-profile-root" style="margin-top:1rem;"></div>
+  </section>
+</div>
     </section>
   `;
 
   wireAnalyticsTabs();
-
 document
+  .getElementById('load-customer-profile-btn')
+  ?.addEventListener('click', renderCustomerProfile);
+
+  document
   .getElementById('load-analytics-btn')
   ?.addEventListener('click', loadAnalytics);
 
@@ -185,6 +221,9 @@ async function loadAnalytics() {
     getCustomersByUtility(utility.id),
     getMeterReadsByMonth(utility.id, month)
   ]);
+
+  latestCustomers = customers;
+  latestReads = reads;
 
   renderBarChart(
     'customers-class-chart',
@@ -498,6 +537,103 @@ function wireAnalyticsTabs() {
       });
     });
   });
+}
+
+function renderCustomerProfile() {
+  const root = document.getElementById('customer-profile-root');
+  const search = val('customer-profile-search').toLowerCase();
+
+  if (!root) return;
+
+  if (!search) {
+    root.innerHTML = `
+      <div class="module-empty">
+        Enter an account number, meter number, or customer name.
+      </div>
+    `;
+    return;
+  }
+
+  const customer = latestCustomers.find((item) =>
+    String(item.account_number || '').toLowerCase().includes(search) ||
+    String(item.meter_number || '').toLowerCase().includes(search) ||
+    String(item.customer_name || '').toLowerCase().includes(search)
+  );
+
+  if (!customer) {
+    root.innerHTML = `
+      <div class="module-empty">
+        No matching customer found.
+      </div>
+    `;
+    return;
+  }
+
+  const customerReads = latestReads.filter((read) =>
+    read.customer_id === customer.id ||
+    read.account_number === customer.account_number ||
+    read.meter_number === customer.meter_number
+  );
+
+  const profile = buildCustomerConsumptionProfile({
+    customer,
+    reads: customerReads
+  });
+
+  root.innerHTML = `
+    <div class="module-kpis">
+      ${metricCard('Records', profile.records)}
+      ${metricCard('Latest Usage', formatNumber(profile.latestUsage))}
+      ${metricCard('Average Usage', formatNumber(profile.averageUsage))}
+      ${metricCard('Forecast Usage', formatNumber(profile.forecastUsage))}
+      ${metricCard('Trend', profile.trend)}
+      ${metricCard('Leak Risk', profile.leakRisk)}
+      ${metricCard('Meter Risk', profile.meterRisk)}
+      ${metricCard('Forecast Revenue', '$' + formatNumber(profile.forecastRevenue))}
+    </div>
+
+    <section class="module-panel" style="margin-top:1rem;">
+      <h3 class="module-panel-title">
+        ${safe(customer.account_number)} — ${safe(customer.customer_name || 'Customer')}
+      </h3>
+
+      <p>
+        Meter: ${safe(customer.meter_number || '—')}
+        • Class: ${safe(customer.customer_class || '—')}
+      </p>
+
+      <h4>Recommendations</h4>
+      <ul>
+        ${profile.recommendations
+          .map((item) => `<li>${safe(item)}</li>`)
+          .join('')}
+      </ul>
+    </section>
+
+    <section class="module-panel" style="margin-top:1rem;">
+      <h3 class="module-panel-title">Usage History</h3>
+
+      <div class="module-table-wrap">
+        <table class="table-clean">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Usage</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${profile.history.map((item) => `
+              <tr>
+                <td>${safe(item.period)}</td>
+                <td>${formatNumber(item.usage)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
 }
 
 function destroyCharts() {
