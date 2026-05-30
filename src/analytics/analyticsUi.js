@@ -611,6 +611,13 @@ function renderCustomerProfile() {
     </section>
 
     <section class="module-panel" style="margin-top:1rem;">
+  <h3 class="module-panel-title">Usage Trend</h3>
+  <div class="chart-card" style="height:320px;">
+    <canvas id="customer-profile-usage-chart"></canvas>
+  </div>
+</section>
+
+    <section class="module-panel" style="margin-top:1rem;">
       <h3 class="module-panel-title">Usage History</h3>
 
       <div class="module-table-wrap">
@@ -634,6 +641,13 @@ function renderCustomerProfile() {
       </div>
     </section>
   `;
+
+  renderLineChart(
+  'customer-profile-usage-chart',
+  profile.history.map((item) => item.period),
+  profile.history.map((item) => item.usage),
+  'Usage'
+);
 }
 
 function destroyCharts() {
