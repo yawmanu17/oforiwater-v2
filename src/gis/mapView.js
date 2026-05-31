@@ -53,11 +53,11 @@ export async function initMapView(rootId = 'dashboard-module-root') {
   <section class="app-workspace">
     <div class="gis-toolbar">
       <div class="gis-tool-group">
-        <button class="gis-tab active" type="button">Network</button>
-        <button class="gis-tab" type="button">Hydraulics</button>
-        <button class="gis-tab" type="button">NRW</button>
-        <button class="gis-tab" type="button">Pressure</button>
-        <button class="gis-tab" type="button">Assets</button>
+        <button class="gis-tab active" data-map-view="network" type="button">Network</button>
+        <button class="gis-tab" data-map-view="hydraulics" type="button">Hydraulics</button>
+        <button class="gis-tab" data-map-view="nrw" type="button">NRW</button>
+        <button class="gis-tab" data-map-view="pressure" type="button">Pressure</button>
+        <button class="gis-tab" data-map-view="assets" type="button">Assets</button>
       </div>
 
       <div class="gis-tool-divider"></div>
@@ -394,7 +394,13 @@ function renderCustomers(layer, customers) {
 
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
-    const marker = L.marker([lat, lon]).addTo(layer);
+    const marker = L.circleMarker([lat, lon], {
+  radius: 7,
+  weight: 2,
+  color: getCustomerColor(customer),
+  fillColor: getCustomerColor(customer),
+  fillOpacity: 0.75
+}).addTo(layer);
 
     marker.bindPopup(`
       <strong>${safe(customer.account_number)}</strong><br />
@@ -420,6 +426,15 @@ function renderCustomers(layer, customers) {
   });
 }
 
+function getCustomerColor(customer) {
+  if (!customer.meter_lat && !customer.service_lat) return '#ef4444';
+  if (customer.meter_location_status === 'Needs Verification') return '#f59e0b';
+  if (customer.meter_location_status === 'GPS Verified') return '#16a34a';
+  if (customer.meter_location_status === 'Address Geocoded') return '#0ea5b7';
+
+  return '#0ea5b7';
+}
+
 
 function renderDmas(layer, dmaModels) {
   dmaModels.forEach((model) => {
@@ -431,9 +446,11 @@ function renderDmas(layer, dmaModels) {
     if (boundaryCoordinates.length) {
       L.polygon(boundaryCoordinates, {
         color,
-        weight: 3,
+        weight: 4,
+        opacity: 0.95,
         fillColor: color,
-        fillOpacity: 0.12
+        fillOpacity: 0.18,
+        dashArray: model.health === 'high' ? '8 6' : null
       })
         .bindPopup(dmaPopupHtml(dma, model))
         .addTo(layer);
@@ -995,6 +1012,8 @@ function cancelDmaBoundaryDrawing() {
 function wireMapTabs() {
   document.querySelectorAll('.gis-tab').forEach((button) => {
     button.addEventListener('click', () => {
+      const view = button.dataset.mapView;
+
       document.querySelectorAll('.gis-tab').forEach((tab) => {
         tab.classList.remove('active');
       });
@@ -1003,10 +1022,34 @@ function wireMapTabs() {
 
       showMapStatus(
         `${button.textContent.trim()} View`,
-        'Layer controls and inspector are active. Click map features to inspect or edit records.'
+        getMapViewDescription(view)
       );
     });
   });
+}
+
+function getMapViewDescription(view) {
+  if (view === 'network') {
+    return 'Shows customers, DMAs, master meters, and pipelines together.';
+  }
+
+  if (view === 'hydraulics') {
+    return 'Use this view for pipelines, pipe sizes, pressure zones, and flow direction.';
+  }
+
+  if (view === 'nrw') {
+    return 'Use this view to inspect DMA NRW performance and water loss risk.';
+  }
+
+  if (view === 'pressure') {
+    return 'Use this view to review pressure zones, DMA centers, and pressure-related issues.';
+  }
+
+  if (view === 'assets') {
+    return 'Use this view to inspect master meters, pipelines, customers, and mapped utility assets.';
+  }
+
+  return 'Click a map item to inspect or edit records.';
 }
 
 async function finishDmaBoundaryDrawing() {
@@ -1019,12 +1062,21 @@ async function finishDmaBoundaryDrawing() {
     return;
   }
 
-  const geom = {
-    type: 'Polygon',
-    coordinates: [
-      dmaBoundaryDraftPoints.map(([lat, lon]) => [lon, lat])
-    ]
-  };
+    const closedPoints = [...dmaBoundaryDraftPoints];
+
+    const first = closedPoints[0];
+    const last = closedPoints[closedPoints.length - 1];
+
+    if (first[0] !== last[0] || first[1] !== last[1]) {
+      closedPoints.push(first);
+    }
+
+    const geom = {
+      type: 'Polygon',
+      coordinates: [
+        closedPoints.map(([lat, lon]) => [lon, lat])
+      ]
+    };
 
   await updateDma(dmaId, {
     boundary_geom: geom,
