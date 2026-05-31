@@ -49,6 +49,7 @@ export async function initFieldMeterReads(rootId = 'dashboard-module-root') {
   wireEvents();
   updateCustomerSnapshot();
   updateUsagePreview();
+  await renderRecentReads();
 }
 
 function render(root) {
@@ -179,7 +180,27 @@ function readingFormHtml() {
         </label>
 
         <label>Meter Photo
-          <input id="field-meter-photo" type="file" accept="image/*" />
+          <input
+  id="field-meter-photo"
+  type="file"
+  accept="image/*"
+  capture="environment"
+/>
+
+<div class="button-row">
+  <button
+    id="retake-photo-btn"
+    class="btn-secondary"
+    type="button"
+  >
+    Retake
+  </button>
+</div>
+
+<img
+  id="meter-photo-preview"
+  style="display:none;max-width:250px;border-radius:12px;"
+/>
         </label>
 
         <label>Photo Note
@@ -296,12 +317,53 @@ function wireEvents() {
   document.getElementById('field-current-reading')?.addEventListener('input', updateUsagePreview);
   document.getElementById('field-previous-reading')?.addEventListener('input', updateUsagePreview);
   document.getElementById('field-unit')?.addEventListener('change', updateUsagePreview);
+ 
+  document.getElementById('field-meter-photo')
+  ?.addEventListener('change', previewMeterPhoto);
 
-  document.getElementById('field-capture-gps-btn')?.addEventListener('click', captureGps);
-  document.getElementById('field-save-btn')?.addEventListener('click', () => saveRead(false));
-  document.getElementById('field-save-next-btn')?.addEventListener('click', () => saveRead(true));
-  document.getElementById('field-clear-btn')?.addEventListener('click', clearReadFields);
-  document.getElementById('field-navigate-btn')?.addEventListener('click', navigateToCustomer);
+document.getElementById('retake-photo-btn')
+  ?.addEventListener('click', retakePhoto);
+
+  document.getElementById('field-capture-gps-btn')
+  ?.addEventListener('click', async (event) => {
+    setFieldButtonActive(event.currentTarget);
+    await captureGps();
+  });
+
+document.getElementById('field-save-btn')
+  ?.addEventListener('click', async (event) => {
+    setFieldButtonActive(event.currentTarget);
+    await saveRead(false);
+  });
+
+document.getElementById('field-save-next-btn')
+  ?.addEventListener('click', async (event) => {
+    setFieldButtonActive(event.currentTarget);
+    await saveRead(true);
+  });
+
+document.getElementById('field-clear-btn')
+  ?.addEventListener('click', (event) => {
+    setFieldButtonActive(event.currentTarget);
+    clearReadFields();
+  });
+
+document.getElementById('field-navigate-btn')
+  ?.addEventListener('click', (event) => {
+    setFieldButtonActive(event.currentTarget);
+    navigateToCustomer();
+  });
+
+function setFieldButtonActive(activeButton) {
+  document
+    .querySelectorAll('.field-action-row button')
+    .forEach((button) => {
+      button.classList.remove('btn-primary');
+      button.classList.add('btn-secondary');
+    });
+
+  activeButton.classList.remove('btn-secondary');
+  activeButton.classList.add('btn-primary');
 }
 
 function handleCustomerChange() {
@@ -350,6 +412,33 @@ function updateUsagePreview() {
     'field-usage-preview',
     `${usageCcf.toFixed(2)} CCF / ${Math.round(usageGal).toLocaleString()} gal`
   );
+}
+
+function previewMeterPhoto(event) {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  const preview =
+    document.getElementById('meter-photo-preview');
+
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+}
+
+function retakePhoto() {
+  const fileInput =
+    document.getElementById('field-meter-photo');
+
+  const preview =
+    document.getElementById('meter-photo-preview');
+
+  if (fileInput) fileInput.value = '';
+
+  if (preview) {
+    preview.src = '';
+    preview.style.display = 'none';
+  }
 }
 
 async function captureGps() {
@@ -458,64 +547,86 @@ async function saveRead(moveNext = false) {
   }
 
   const previous = numberOrZero(val('field-previous-reading'));
-  const current = numberOrZero(val('field-current-reading'));
-  const unit = val('field-unit') || 'CCF';
+const current = numberOrZero(val('field-current-reading'));
+const unit = val('field-unit') || 'CCF';
 
-  if (!current && !val('field-exception-code')) {
-    showWarning('Enter current reading or select an exception.');
-    return;
+if (!current && !val('field-exception-code')) {
+  showWarning('Enter current reading or select an exception.');
+  return;
+}
+
+try {
+  let photoUrl = null;
+
+  const photoFile = document.getElementById('field-meter-photo')?.files?.[0];
+
+  if (photoFile && navigator.onLine) {
+    photoUrl = await uploadMeterReadPhoto({
+      utilityId: utility.id,
+      customerId: selectedCustomer.id,
+      file: photoFile
+    });
   }
 
-  try {
-    let photoUrl = null;
+  const multiplier = Number(selectedCustomer?.meter_multiplier) > 0
+    ? Number(selectedCustomer.meter_multiplier)
+    : 1;
 
-    const photoFile = document.getElementById('field-meter-photo')?.files?.[0];
+  const registerFactor = Number(selectedCustomer?.register_factor) > 0
+    ? Number(selectedCustomer.register_factor)
+    : 1;
 
-    if (photoFile && navigator.onLine) {
-      photoUrl = await uploadMeterReadPhoto({
-        utilityId: utility.id,
-        customerId: selectedCustomer.id,
-        file: photoFile
-      });
-    }
+  const rawUsage = Math.max(current - previous, 0);
+  const adjustedUsage = rawUsage * multiplier * registerFactor;
 
-    const rawUsage = Math.max(current - previous, 0);
-    const usageCcf = unit === 'GAL' ? rawUsage / GAL_PER_CCF : rawUsage;
-    const usageGal = unit === 'GAL' ? rawUsage : rawUsage * GAL_PER_CCF;
+  const usageCcf =
+    unit === 'GAL'
+      ? adjustedUsage / GAL_PER_CCF
+      : adjustedUsage;
 
-    const payload = {
-      utility_id: utility.id,
-      customer_id: selectedCustomer.id,
-      billing_month: val('field-billing-month') || currentMonth(),
-      reading_date: val('field-reading-date') || todayDate(),
+  const usageGal =
+    unit === 'GAL'
+      ? adjustedUsage
+      : adjustedUsage * GAL_PER_CCF;
 
-      previous_read: previous,
-      current_read: current,
+  const payload = {
+    utility_id: utility.id,
+    customer_id: selectedCustomer.id,
 
-      reading_unit: unit,
-      usage_ccf: usageCcf,
-      usage_gal: usageGal,
+    account_number: selectedCustomer.account_number || null,
+    service_id: selectedCustomer.service_id || null,
+    meter_number: selectedCustomer.meter_number || null,
 
-      read_type: val('field-read-type') || 'actual',
-      exception_code: val('field-exception-code') || null,
-      notes: val('field-notes'),
+    billing_month: val('field-billing-month') || currentMonth(),
+    reading_date: val('field-reading-date') || todayDate(),
 
-      gps_lat: capturedGps?.lat || null,
-      gps_lon: capturedGps?.lon || null,
-      gps_accuracy_m: capturedGps?.accuracy || null,
+    previous_read: previous,
+    current_read: current,
 
-      reader_id: authState.user?.id || null,
+    reading_unit: unit,
+    usage_ccf: usageCcf,
+    usage_gal: usageGal,
 
-      photo_url: photoUrl,
-      photo_note: val('field-photo-note')
-    };
+    read_type: val('field-read-type') || 'actual',
+    exception_code: val('field-exception-code') || null,
+    notes: val('field-notes') || null,
 
-    if (!navigator.onLine) {
-      await savePendingRead(payload);
+    gps_lat: capturedGps?.lat || null,
+    gps_lon: capturedGps?.lon || null,
+    gps_accuracy_m: capturedGps?.accuracy || null,
 
-      showWarning('Device is offline. Meter read saved locally and will sync later.');
-      return;
-    }
+    reader_id: authState.user?.id || null,
+
+    photo_url: photoUrl || null,
+    photo_note: val('field-photo-note') || null
+  };
+
+if (!navigator.onLine) {
+  await savePendingRead(payload);
+
+  showWarning('Device is offline. Meter read saved locally and will sync later.');
+  return;
+}
 
     const read = await saveMeterRead(payload);
 
