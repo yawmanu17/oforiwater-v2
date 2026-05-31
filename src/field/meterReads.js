@@ -180,29 +180,38 @@ function readingFormHtml() {
           />
         </label>
 
-        <label>Meter Photo
-          <input
-  id="field-meter-photo"
-  type="file"
-  accept="image/*"
-  capture="environment"
-/>
+       <label>Meter Photo
+  <div class="button-row">
+    <button
+      id="capture-meter-photo-btn"
+      class="btn-secondary"
+      type="button"
+    >
+      Capture Photo
+    </button>
 
-<div class="button-row">
-  <button
-    id="retake-photo-btn"
-    class="btn-secondary"
-    type="button"
-  >
-    Retake
-  </button>
-</div>
+    <button
+      id="retake-photo-btn"
+      class="btn-secondary"
+      type="button"
+    >
+      Retake
+    </button>
+  </div>
 
-<img
-  id="meter-photo-preview"
-  style="display:none;max-width:250px;border-radius:12px;"
-/>
-        </label>
+  <input
+    id="field-meter-photo"
+    type="file"
+    accept="image/*"
+    capture="environment"
+    hidden
+  />
+
+  <img
+    id="meter-photo-preview"
+    style="display:none;max-width:250px;border-radius:12px;margin-top:.5rem;"
+  />
+</label>
 
         <label>Photo Note
           <input
@@ -330,13 +339,19 @@ function wireEvents() {
     .getElementById('field-unit')
     ?.addEventListener('change', updateUsagePreview);
 
-  document
-    .getElementById('field-meter-photo')
-    ?.addEventListener('change', previewMeterPhoto);
+ document
+  .getElementById('capture-meter-photo-btn')
+  ?.addEventListener('click', () => {
+    document.getElementById('field-meter-photo')?.click();
+  });
 
-  document
-    .getElementById('retake-photo-btn')
-    ?.addEventListener('click', retakePhoto);
+document
+  .getElementById('field-meter-photo')
+  ?.addEventListener('change', previewMeterPhoto);
+
+document
+  .getElementById('retake-photo-btn')
+  ?.addEventListener('click', retakePhoto);
 
   document
     .getElementById('field-capture-gps-btn')
@@ -679,7 +694,7 @@ if (!navigator.onLine) {
   return;
 }
 
-await createMeterRead(payload);
+await saveMeterRead(payload);
 
     const read = await saveMeterRead(payload);
 
