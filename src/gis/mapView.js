@@ -151,6 +151,8 @@ document.getElementById('cancel-dma-boundary-btn')?.addEventListener('click', (e
   cancelDmaBoundaryDrawing();
 });
 
+}
+
 function renderMap(customers, dmas, masterMeters, pipelines, networkModel) {
   if (map) {
     map.remove();
@@ -904,10 +906,7 @@ function renderCustomerEditor(customer, dmas = []) {
     setInputValue('map-edit-meter-lon', lastClickedCoordinate.lon);
     setInputValue('map-edit-location-status', 'Manually Corrected');
   });
-  showMapStatus(
-  'Coordinate Selected',
-  `Lat: ${lat.toFixed(6)}, Lon: ${lng.toFixed(6)}`
-);
+
 }
 
 function startPipelineDrawing() {
