@@ -1143,3 +1143,10 @@ textarea:focus{
     max-height: 220px;
   }
 }
+
+.sidebar-link.active {
+  background: var(--brand-primary);
+  color: white;
+  border-color: var(--brand-primary);
+  font-weight: 600;
+}

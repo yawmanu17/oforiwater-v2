@@ -148,13 +148,39 @@ function render(root, currentUtility) {
     </button>
   </div>
 
-  <div style="margin-top:1rem;">
-    <h3>Existing DMAs</h3>
-    <p class="module-panel-subtitle">
-      Use Utility Setup to define DMA details. Use the Map tab to draw or redraw DMA boundaries.
-    </p>
-    <div id="dma-list"></div>
+  <div class="module-panel" style="margin-top:1rem;">
+  <div class="module-panel-header">
+    <div>
+      <h3 class="module-panel-title">Existing DMAs</h3>
+      <p class="module-panel-subtitle">
+        Use Utility Setup to define DMA details. Use the Map tab to draw or redraw DMA boundaries.
+      </p>
+    </div>
   </div>
+
+  <div class="module-table-wrap">
+    <table class="table-clean">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Code</th>
+          <th>City</th>
+          <th>Zone</th>
+          <th>Status</th>
+          <th>Type</th>
+          <th>Center</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody id="dma-table-body">
+        <tr>
+          <td colspan="8">Loading DMAs...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 </section>
   `;
 }
@@ -325,58 +351,86 @@ function clearDmaForm() {
 }
 
 async function refreshDmaList() {
-  const list = document.getElementById('dma-list');
-  if (!list) return;
+  const tbody = document.getElementById('dma-table-body');
+
+  if (!tbody) return;
 
   const dmas = await getDmasByUtility(currentUtility.id);
 
   if (!dmas.length) {
-    list.innerHTML = '<p>No DMAs created yet.</p>';
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8">No DMAs created yet.</td>
+      </tr>
+    `;
     return;
   }
 
-  list.innerHTML = dmas.map((dma) => `
-  <div class="mini-card">
-    <strong>${safe(dma.name)}</strong><br />
-    <span>
-      Code: ${safe(dma.code || '—')}
-      • City: ${safe(dma.city || '—')}
-      • Zone: ${safe(dma.pressure_zone || '—')}
-    </span><br />
-    <small>
-      Type: ${safe(dma.dma_type || 'Distribution')}
-      • Status: ${safe(dma.status || 'Active')}
-    </small><br />
-    <small>
-      Center: ${safe(dma.center_lat || '—')}, ${safe(dma.center_lon || '—')}
-    </small>
+  tbody.innerHTML = dmas.map((dma) => `
+    <tr>
+      <td>
+        <strong>${safe(dma.name || 'Unnamed DMA')}</strong>
+      </td>
 
-    <div class="button-row">
-      <button
-        class="btn-secondary edit-dma-btn"
-        type="button"
-        data-dma-id="${safe(dma.id)}"
-      >
-        Edit DMA
-      </button>
+      <td>${safe(dma.code || '—')}</td>
 
-      <button
-        class="btn-secondary"
-        type="button"
-        onclick="alert('Open the Map tab, click Draw DMA Boundary, then select this DMA.')"
-      >
-        Draw Boundary on Map
-      </button>
-    </div>
-  </div>
-`).join('');
+      <td>${safe(dma.city || '—')}</td>
 
-document.querySelectorAll('.edit-dma-btn').forEach((button) => {
-  button.addEventListener('click', () => {
-    const dma = dmas.find((item) => item.id === button.dataset.dmaId);
-    if (dma) fillDmaForm(dma);
-  });
-});
+      <td>${safe(dma.pressure_zone || '—')}</td>
+
+      <td>
+        <span class="status-badge status-ok">
+          ${safe(dma.status || 'Active')}
+        </span>
+      </td>
+
+      <td>${safe(dma.dma_type || 'Distribution')}</td>
+
+      <td>
+        ${
+          dma.center_lat && dma.center_lon
+            ? `${safe(dma.center_lat)}, ${safe(dma.center_lon)}`
+            : '—'
+        }
+      </td>
+
+      <td>
+        <div class="button-row">
+          <button
+            class="btn-secondary edit-dma-btn"
+            type="button"
+            data-dma-id="${safe(dma.id)}"
+          >
+            Edit
+          </button>
+
+          <button
+            class="btn-secondary boundary-dma-btn"
+            type="button"
+            data-dma-id="${safe(dma.id)}"
+          >
+            Boundary
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('.edit-dma-btn')
+    .forEach((button) => {
+      button.addEventListener('click', () => {
+        editDma(button.dataset.dmaId);
+      });
+    });
+
+  document.querySelectorAll('.boundary-dma-btn')
+    .forEach((button) => {
+      button.addEventListener('click', () => {
+        alert(
+          'Open the Map tab, click Draw DMA Boundary, then select this DMA.'
+        );
+      });
+    });
 }
 
 function fillDmaForm(dma) {
