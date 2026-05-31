@@ -84,6 +84,10 @@ function render(root) {
 function customerFormHtml() {
   return `
     <div class="form-grid">
+       <label>Service ID
+        <input id="customer-service-id" placeholder="SID-100001" />
+      </label>
+
       <label>Account Number
         <input id="customer-account-number" placeholder="100001" />
       </label>
@@ -169,7 +173,7 @@ function customerFormHtml() {
         </select>
       </label>
 
-      <label>Service Address
+      <label class="address-field-wrap">Service Address
   <input
     id="customer-service-address"
     placeholder="123 Main Street"
@@ -316,46 +320,58 @@ function customerListHtml() {
 }
 
 function wireEvents() {
-  document.getElementById('save-customer-btn')?.addEventListener('click', (event) => {
-    setActiveActionButton(event.currentTarget);
-    saveCustomer();
-  });
+  document.getElementById('save-customer-btn')
+    ?.addEventListener('click', (event) => {
+      setActiveActionButton(event.currentTarget);
+      saveCustomer();
+    });
 
-  document.getElementById('geocode-customer-btn')?.addEventListener('click', async (event) => {
-    setActiveActionButton(event.currentTarget);
-    await geocodeCustomerAddress();
-  });
+  document.getElementById('geocode-customer-btn')
+    ?.addEventListener('click', async (event) => {
+      setActiveActionButton(event.currentTarget);
+      await geocodeCustomerAddress();
+    });
 
-  document.getElementById('gps-customer-btn')?.addEventListener('click', async (event) => {
-    setActiveActionButton(event.currentTarget);
-    await useCurrentGps();
-  });
+  document.getElementById('gps-customer-btn')
+    ?.addEventListener('click', async (event) => {
+      setActiveActionButton(event.currentTarget);
+      await useCurrentGps();
+    });
 
-  document.getElementById('clear-customer-btn')?.addEventListener('click', (event) => {
-    setActiveActionButton(event.currentTarget);
-    clearAndReset();
-  });
+  document.getElementById('clear-customer-btn')
+    ?.addEventListener('click', (event) => {
+      setActiveActionButton(event.currentTarget);
+      clearAndReset();
+    });
 
-  document
-    .getElementById('customer-csv-file')
+  document.getElementById('customer-csv-file')
     ?.addEventListener('change', importCustomersCsv);
 
+  // ADDRESS AUTOCOMPLETE LISTENERS
+  document.getElementById('customer-service-address')
+    ?.addEventListener('input', handleAddressAutocomplete);
+
+  document.getElementById('customer-city')
+    ?.addEventListener('input', handleAddressAutocomplete);
+
+  document.getElementById('customer-state')
+    ?.addEventListener('input', handleAddressAutocomplete);
+
+  document.getElementById('customer-zip')
+    ?.addEventListener('input', handleAddressAutocomplete);
+
+  // EDIT BUTTONS
   document.querySelectorAll('.edit-customer-btn').forEach((button) => {
     button.addEventListener('click', () => {
-      const customer = customers.find((item) => item.id === button.dataset.customerId);
+      const customer = customers.find(
+        (item) => item.id === button.dataset.customerId
+      );
 
       if (customer) {
         fillCustomerForm(customer);
         setActiveButton('.edit-customer-btn', button);
-  document
-  .getElementById('customer-service-address')
-  ?.addEventListener('input', handleAddressAutocomplete);
       }
     });
-  });
-
-  ['customer-service-address', 'customer-city', 'customer-state', 'customer-zip'].forEach((id) => {
-    document.getElementById(id)?.addEventListener('blur', maybeAutoGeocodeCustomer);
   });
 }
 
@@ -378,14 +394,20 @@ async function handleAddressAutocomplete() {
 
     if (!root) return;
 
-    if (query.length < 5) {
+    if (query.length < 6) {
       root.innerHTML = '';
       return;
     }
 
+    root.innerHTML = `
+      <div class="address-suggestion-status">
+        Searching addresses...
+      </div>
+    `;
+
     try {
       const url =
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`;
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=us&q=${encodeURIComponent(query)}`;
 
       const response = await fetch(url, {
         headers: {
@@ -393,10 +415,18 @@ async function handleAddressAutocomplete() {
         }
       });
 
+      if (!response.ok) {
+        throw new Error(`Address search failed: ${response.status}`);
+      }
+
       const results = await response.json();
 
       if (!results.length) {
-        root.innerHTML = '';
+        root.innerHTML = `
+          <div class="address-suggestion-status">
+            No suggestions found. Try adding city, state, and ZIP.
+          </div>
+        `;
         return;
       }
 
@@ -427,9 +457,14 @@ async function handleAddressAutocomplete() {
       });
     } catch (error) {
       console.error('Address autocomplete failed:', error);
-      root.innerHTML = '';
+
+      root.innerHTML = `
+        <div class="address-suggestion-status">
+          Address suggestions unavailable. Use Geocode Address after entering the full address.
+        </div>
+      `;
     }
-  }, 500);
+  }, 600);
 }
 
 async function saveCustomer() {
@@ -447,6 +482,8 @@ async function saveCustomer() {
   utility_id: utility.id,
 
   dma_id: val('customer-dma-id') || null,
+
+  service_id: val('customer-service-id'),
 
   account_number: accountNumber,
   customer_name: val('customer-name'),
@@ -575,6 +612,7 @@ async function importCustomersCsv(event) {
 
     const payload = {
       utility_id: utility.id,
+      service_id: row.service_id || row.service || row.service_no || '',
       account_number: accountNumber,
       customer_name: row.customer_name || row.name || row.Name || '',
       customer_class: row.customer_class || row.class || 'Residential',
@@ -716,6 +754,7 @@ async function useCurrentGps() {
 function fillCustomerForm(customer) {
   editingCustomerId = customer.id;
 
+  setValue('customer-service-id', customer.service_id);
   setValue('customer-account-number', customer.account_number);
   setValue('customer-name', customer.customer_name);
   setValue('customer-class', customer.customer_class || 'Residential');
@@ -776,6 +815,7 @@ function clearAndReset() {
 
 function clearCustomerForm() {
   [
+    'customer-service-id',
     'customer-account-number',
     'customer-name',
     'customer-meter-number',
