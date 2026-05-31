@@ -51,16 +51,19 @@ let offlineListenersAttached = false;
 
 export async function initDashboard() {
   const root = document.getElementById('utility-setup-root');
+
   if (!root) return;
 
   if (!authState.user || !authState.profile || !authState.utility) {
     root.innerHTML = `<p>Loading utility workspace...</p>`;
     return;
-    applyUtilityTheme(authState.utility);
   }
+
+  applyUtilityTheme(authState.utility);
 
   const role = authState.profile.role;
   window.OFORI_AUTH_ROLE = role;
+
   const allowedTabs = getAllowedTabs(role);
   const visibleTabs = TAB_CONFIG.filter((tab) => allowedTabs.includes(tab.id));
   const defaultTab = visibleTabs[0];
