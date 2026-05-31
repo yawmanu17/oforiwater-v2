@@ -170,8 +170,13 @@ function customerFormHtml() {
       </label>
 
       <label>Service Address
-        <input id="customer-service-address" placeholder="123 Main Street" />
-      </label>
+  <input
+    id="customer-service-address"
+    placeholder="123 Main Street"
+    autocomplete="off"
+  />
+  <div id="address-suggestions" class="address-suggestions"></div>
+</label>
 
       <label>City
         <input id="customer-city" placeholder="Atlanta" />
@@ -342,6 +347,9 @@ function wireEvents() {
       if (customer) {
         fillCustomerForm(customer);
         setActiveButton('.edit-customer-btn', button);
+  document
+  .getElementById('customer-service-address')
+  ?.addEventListener('input', handleAddressAutocomplete);
       }
     });
   });
@@ -349,6 +357,79 @@ function wireEvents() {
   ['customer-service-address', 'customer-city', 'customer-state', 'customer-zip'].forEach((id) => {
     document.getElementById(id)?.addEventListener('blur', maybeAutoGeocodeCustomer);
   });
+}
+
+let addressAutocompleteTimer = null;
+
+async function handleAddressAutocomplete() {
+  clearTimeout(addressAutocompleteTimer);
+
+  addressAutocompleteTimer = setTimeout(async () => {
+    const address = val('customer-service-address');
+    const city = val('customer-city');
+    const state = val('customer-state');
+    const zip = val('customer-zip');
+
+    const query = [address, city, state, zip]
+      .filter(Boolean)
+      .join(', ');
+
+    const root = document.getElementById('address-suggestions');
+
+    if (!root) return;
+
+    if (query.length < 5) {
+      root.innerHTML = '';
+      return;
+    }
+
+    try {
+      const url =
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`;
+
+      const response = await fetch(url, {
+        headers: {
+          Accept: 'application/json'
+        }
+      });
+
+      const results = await response.json();
+
+      if (!results.length) {
+        root.innerHTML = '';
+        return;
+      }
+
+      root.innerHTML = results.map((item) => `
+        <button
+          type="button"
+          class="address-suggestion-btn"
+          data-lat="${safe(item.lat)}"
+          data-lon="${safe(item.lon)}"
+          data-label="${safe(item.display_name)}"
+        >
+          ${safe(item.display_name)}
+        </button>
+      `).join('');
+
+      document.querySelectorAll('.address-suggestion-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+          setValue('customer-service-address', button.dataset.label || '');
+          setValue('customer-service-lat', button.dataset.lat || '');
+          setValue('customer-service-lon', button.dataset.lon || '');
+          setValue('customer-meter-lat', button.dataset.lat || '');
+          setValue('customer-meter-lon', button.dataset.lon || '');
+          setValue('customer-meter-location-status', 'Address Geocoded');
+
+          root.innerHTML = '';
+          showSuccess('Address selected and coordinates filled.');
+        });
+      });
+    } catch (error) {
+      console.error('Address autocomplete failed:', error);
+      root.innerHTML = '';
+    }
+  }, 500);
 }
 
 async function saveCustomer() {

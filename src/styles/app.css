@@ -1150,3 +1150,24 @@ textarea:focus{
   border-color: var(--brand-primary);
   font-weight: 600;
 }
+
+.address-suggestions {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.address-suggestion-btn {
+  text-align: left;
+  border: 1px solid #dbeafe;
+  background: #ffffff;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.address-suggestion-btn:hover {
+  background: #ecfeff;
+  border-color: var(--brand-primary);
+}
