@@ -230,3 +230,28 @@
   border-color: transparent !important;
   box-shadow: 0 8px 18px rgba(6, 182, 212, 0.2);
 }
+
+.gis-tool-btn.map-tool-active,
+.gis-tool-btn.primary,
+.gis-tab.active {
+  background: var(--brand-primary);
+  color: #ffffff;
+  border-color: var(--brand-primary);
+  font-weight: 700;
+}
+
+.utility-map.draw-mode {
+  cursor: crosshair;
+}
+
+.utility-map.extend-mode {
+  cursor: copy;
+}
+
+.utility-map.select-mode {
+  cursor: default;
+}
+
+.workspace-inspector-body {
+  padding: 1rem;
+}

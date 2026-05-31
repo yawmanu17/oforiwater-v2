@@ -102,6 +102,9 @@ export async function initMapView(rootId = 'dashboard-module-root') {
     </div>
   </section>
 `;
+
+wireMapTabs();
+
   const [customers, dmas, masterMeters, pipelines, meterReads] = await Promise.all([
     getCustomersByUtility(utility.id),
     getDmasByUtility(utility.id),
@@ -123,15 +126,30 @@ export async function initMapView(rootId = 'dashboard-module-root') {
 
   renderMap(customers, dmas, masterMeters, pipelines, networkModel);
 
-  document.getElementById('fit-map-btn')?.addEventListener('click', () => {
-    fitMapToData(customers, dmas, masterMeters, pipelines);
-  });
+  document.getElementById('fit-map-btn')?.addEventListener('click', (event) => {
+  setMapToolActive(event.currentTarget.id);
+  fitMapToData(customers, dmas, masterMeters, pipelines);
+});
 
-  document.getElementById('draw-pipeline-btn')?.addEventListener('click', startPipelineDrawing);
-  document.getElementById('cancel-pipeline-btn')?.addEventListener('click', cancelPipelineDrawing);
-  document.getElementById('draw-dma-boundary-btn')?.addEventListener('click', startDmaBoundaryDrawing);
-document.getElementById('cancel-dma-boundary-btn')?.addEventListener('click', cancelDmaBoundaryDrawing);
-}
+document.getElementById('draw-pipeline-btn')?.addEventListener('click', (event) => {
+  setMapToolActive(event.currentTarget.id);
+  startPipelineDrawing();
+});
+
+document.getElementById('cancel-pipeline-btn')?.addEventListener('click', (event) => {
+  setMapToolActive(event.currentTarget.id);
+  cancelPipelineDrawing();
+});
+
+document.getElementById('draw-dma-boundary-btn')?.addEventListener('click', (event) => {
+  setMapToolActive(event.currentTarget.id);
+  startDmaBoundaryDrawing();
+});
+
+document.getElementById('cancel-dma-boundary-btn')?.addEventListener('click', (event) => {
+  setMapToolActive(event.currentTarget.id);
+  cancelDmaBoundaryDrawing();
+});
 
 function renderMap(customers, dmas, masterMeters, pipelines, networkModel) {
   if (map) {
@@ -886,6 +904,10 @@ function renderCustomerEditor(customer, dmas = []) {
     setInputValue('map-edit-meter-lon', lastClickedCoordinate.lon);
     setInputValue('map-edit-location-status', 'Manually Corrected');
   });
+  showMapStatus(
+  'Coordinate Selected',
+  `Lat: ${lat.toFixed(6)}, Lon: ${lng.toFixed(6)}`
+);
 }
 
 function startPipelineDrawing() {
@@ -901,7 +923,10 @@ function startPipelineDrawing() {
     pipelineDraftLayer = null;
   }
 
-  alert('Draw Pipeline mode activated.\n\nClick the start point, add any bends, then double-click the endpoint to save.');
+ showMapStatus(
+  'Draw Pipeline Mode',
+  'Click the start point, add bends, then double-click the endpoint to save.'
+);
 }
 
 function startDmaBoundaryDrawing(existingDmaId = null) {
@@ -930,7 +955,10 @@ function startDmaBoundaryDrawing(existingDmaId = null) {
 
   map._oforiBoundaryDmaId = dmaId;
 
-  alert('DMA Boundary drawing started. Click around the DMA area. Double-click to save boundary.');
+  showMapStatus(
+  'Draw DMA Boundary Mode',
+  'Click around the DMA area. Double-click to save the boundary.'
+);
 }
 
 function addDmaBoundaryDraftPoint(latlng) {
@@ -962,6 +990,24 @@ function cancelDmaBoundaryDrawing() {
   }
 
   map._oforiBoundaryDmaId = null;
+  showMapStatus('DMA Boundary Cancelled', 'Select another map tool or click an item to inspect.');
+}
+
+function wireMapTabs() {
+  document.querySelectorAll('.gis-tab').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.gis-tab').forEach((tab) => {
+        tab.classList.remove('active');
+      });
+
+      button.classList.add('active');
+
+      showMapStatus(
+        `${button.textContent.trim()} View`,
+        'Layer controls and inspector are active. Click map features to inspect or edit records.'
+      );
+    });
+  });
 }
 
 async function finishDmaBoundaryDrawing() {
@@ -1030,12 +1076,36 @@ function setMapToolActive(activeButtonId = '') {
     'draw-dma-boundary-btn',
     'cancel-dma-boundary-btn'
   ].forEach((id) => {
-    document.getElementById(id)?.classList.remove('map-tool-active');
+    const button = document.getElementById(id);
+
+    if (!button) return;
+
+    button.classList.remove('primary', 'map-tool-active');
   });
 
   if (activeButtonId) {
-    document.getElementById(activeButtonId)?.classList.add('map-tool-active');
+    const activeButton = document.getElementById(activeButtonId);
+
+    activeButton?.classList.add('primary', 'map-tool-active');
   }
+}
+
+function showMapStatus(title, message = '') {
+  const panel = document.getElementById('map-editor-panel');
+
+  if (!panel) return;
+
+  panel.classList.remove('empty');
+
+  panel.innerHTML = `
+    <div class="workspace-inspector-header">
+      <strong>${safe(title)}</strong>
+    </div>
+
+    <div class="workspace-inspector-body">
+      <p>${safe(message)}</p>
+    </div>
+  `;
 }
 
 function addPipelineDraftPoint(latlng) {
@@ -1063,6 +1133,7 @@ function cancelPipelineDrawing() {
     pipelineDraftLayer.remove();
     pipelineDraftLayer = null;
   }
+  showMapStatus('Pipeline Drawing Cancelled', 'Select another map tool or click an item to inspect.');
 }
 
 async function finishPipelineDrawing() {
