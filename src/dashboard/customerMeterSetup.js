@@ -14,7 +14,7 @@ import {
   safe
 } from '../ui/moduleLayout.js';
 import { logAuditEvent } from '../audit/logAuditEvent.js';
-import { showSuccess, showError } from '../ui/toast.js';
+import { showSuccess, showError, showWarning } from '../ui/toast.js';
 
 
 let dmas = [];
@@ -311,10 +311,25 @@ function customerListHtml() {
 }
 
 function wireEvents() {
-  document.getElementById('save-customer-btn')?.addEventListener('click', saveCustomer);
-  document.getElementById('geocode-customer-btn')?.addEventListener('click', geocodeCustomerAddress);
-  document.getElementById('gps-customer-btn')?.addEventListener('click', useCurrentGps);
-  document.getElementById('clear-customer-btn')?.addEventListener('click', clearAndReset);
+  document.getElementById('save-customer-btn')?.addEventListener('click', (event) => {
+    setActiveActionButton(event.currentTarget);
+    saveCustomer();
+  });
+
+  document.getElementById('geocode-customer-btn')?.addEventListener('click', async (event) => {
+    setActiveActionButton(event.currentTarget);
+    await geocodeCustomerAddress();
+  });
+
+  document.getElementById('gps-customer-btn')?.addEventListener('click', async (event) => {
+    setActiveActionButton(event.currentTarget);
+    await useCurrentGps();
+  });
+
+  document.getElementById('clear-customer-btn')?.addEventListener('click', (event) => {
+    setActiveActionButton(event.currentTarget);
+    clearAndReset();
+  });
 
   document
     .getElementById('customer-csv-file')
@@ -323,8 +338,16 @@ function wireEvents() {
   document.querySelectorAll('.edit-customer-btn').forEach((button) => {
     button.addEventListener('click', () => {
       const customer = customers.find((item) => item.id === button.dataset.customerId);
-      if (customer) fillCustomerForm(customer);
+
+      if (customer) {
+        fillCustomerForm(customer);
+        setActiveButton('.edit-customer-btn', button);
+      }
     });
+  });
+
+  ['customer-service-address', 'customer-city', 'customer-state', 'customer-zip'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('blur', maybeAutoGeocodeCustomer);
   });
 }
 
@@ -335,9 +358,9 @@ async function saveCustomer() {
   const accountNumber = val('customer-account-number');
 
   if (!accountNumber) {
-    alert('Account number is required.');
-    return;
-  }
+  showError('Account number is required.');
+  return;
+}
 
   const payload = {
   utility_id: utility.id,
@@ -455,11 +478,12 @@ async function importCustomersCsv(event) {
   const rows = parseCsv(text);
 
   if (!rows.length) {
-    alert('CSV file is empty.');
+    showError('CSV file is empty.');
     return;
   }
 
   let imported = 0;
+  const importedPayloads = [];
 
   for (const row of rows) {
     const accountNumber = row.account_number || row.account || row.Account;
@@ -473,32 +497,93 @@ async function importCustomersCsv(event) {
       account_number: accountNumber,
       customer_name: row.customer_name || row.name || row.Name || '',
       customer_class: row.customer_class || row.class || 'Residential',
+      account_type: row.account_type || 'Water',
+      dma_id: row.dma_id || null,
       meter_number: row.meter_number || row.meter || '',
       meter_size: row.meter_size || '',
       meter_type: row.meter_type || '',
+      service_status: row.service_status || 'Active',
       service_address: row.service_address || row.address || '',
       city: row.city || '',
       state: row.state || '',
       zip: row.zip || '',
+      pressure_zone: row.pressure_zone || '',
       service_lat: lat,
       service_lon: lon,
       meter_lat: lat,
       meter_lon: lon,
       meter_location_status: lat && lon ? 'Imported GPS' : 'Needs Verification',
+      meter_location_note: row.meter_location_note || '',
+      meter_access_type: row.meter_access_type || '',
       billing_email: row.billing_email || row.email || '',
       phone: row.phone || '',
       active: true
     };
 
     await upsertCustomer(payload);
+    importedPayloads.push(payload);
     imported += 1;
   }
 
-  alert(`${imported} customer records imported.`);
+  window.OFORI_IMPORTED_CUSTOMERS = importedPayloads;
+
+  await logAuditEvent({
+    action: 'customers_imported',
+    entityType: 'customer_import',
+    entityId: utility.id,
+    details: {
+      imported_count: imported
+    }
+  });
+
+  showSuccess(`${imported} customer records imported and saved for analysis.`);
   await reloadCustomers();
 }
 
-async function geocodeCustomerAddress() {
+function setActiveButton(selector, activeButton) {
+  document.querySelectorAll(selector).forEach((button) => {
+    button.classList.remove('btn-primary');
+    button.classList.add('btn-secondary');
+  });
+
+  activeButton.classList.remove('btn-secondary');
+  activeButton.classList.add('btn-primary');
+}
+
+function setActiveActionButton(activeButton) {
+  document.querySelectorAll('.module-action-bar button').forEach((button) => {
+    button.classList.remove('btn-primary');
+    button.classList.add('btn-secondary');
+  });
+
+  activeButton.classList.remove('btn-secondary');
+  activeButton.classList.add('btn-primary');
+}
+
+let geocodeTimer = null;
+
+function maybeAutoGeocodeCustomer() {
+  clearTimeout(geocodeTimer);
+
+  geocodeTimer = setTimeout(async () => {
+    const address = val('customer-service-address');
+    const city = val('customer-city');
+    const state = val('customer-state');
+    const zip = val('customer-zip');
+
+    if (!address || !city || !state || zip.length < 5) return;
+
+    const alreadyHasCoords =
+      val('customer-service-lat') &&
+      val('customer-service-lon');
+
+    if (alreadyHasCoords) return;
+
+    await geocodeCustomerAddress(false);
+  }, 700);
+}
+
+async function geocodeCustomerAddress(showMessage = true) {
   const fullAddress = [
     val('customer-service-address'),
     val('customer-city'),
@@ -507,7 +592,7 @@ async function geocodeCustomerAddress() {
   ].filter(Boolean).join(', ');
 
   if (!fullAddress) {
-    alert('Enter service address first.');
+    showError('Enter service address first.');
     return;
   }
 
@@ -515,7 +600,7 @@ async function geocodeCustomerAddress() {
     const result = await geocodeAddress(fullAddress);
 
     if (!result) {
-      alert('No geocode result found.');
+      showError('No geocode result found.');
       return;
     }
 
@@ -525,9 +610,11 @@ async function geocodeCustomerAddress() {
     setValue('customer-meter-lon', result.lon);
     setValue('customer-meter-location-status', 'Address Geocoded');
 
-    alert('Address geocoded.');
+    if (showMessage) {
+      showSuccess('Address geocoded.');
+    }
   } catch (error) {
-    alert(error.message);
+    showError(error.message || 'Address geocoding failed.');
   }
 }
 
@@ -554,12 +641,16 @@ function fillCustomerForm(customer) {
   setValue('customer-account-type', customer.account_type || 'Water');
   setValue('customer-dma-id', customer.dma_id || '');
   setValue('customer-meter-number', customer.meter_number);
-  setValue('customer-meter-size', customer.meter_size);
-  setValue('customer-meter-type', customer.meter_type);
+  setValue('meter-size', customer.meter_size);
+  setValue('meter-type', customer.meter_type);
+  setValue('service-status', customer.service_status || 'Active');
   setValue('customer-service-address', customer.service_address);
   setValue('customer-city', customer.city);
   setValue('customer-state', customer.state);
   setValue('customer-zip', customer.zip);
+  setValue('pressure-zone', customer.pressure_zone);
+  setValue('route-sequence', customer.route_sequence);
+  setValue('meter-install-date', customer.meter_install_date);
   setValue('customer-service-lat', customer.service_lat);
   setValue('customer-service-lon', customer.service_lon);
   setValue('customer-meter-lat', customer.meter_lat);
@@ -568,10 +659,15 @@ function fillCustomerForm(customer) {
   setValue('customer-meter-location-note', customer.meter_location_note);
   setValue('customer-phone', customer.phone);
   setValue('customer-billing-email', customer.billing_email);
-  setValue('customer-meter-access-type', customer.meter_access_type);
+  setValue('meter-access-type', customer.meter_access_type);
 
   const saveBtn = document.getElementById('save-customer-btn');
-  if (saveBtn) saveBtn.textContent = 'Update Customer + Meter';
+
+  if (saveBtn) {
+    saveBtn.textContent = 'Update Customer + Meter';
+    saveBtn.classList.remove('btn-secondary');
+    saveBtn.classList.add('btn-primary');
+  }
 
   document.getElementById('customer-account-number')?.focus();
 }
@@ -602,12 +698,16 @@ function clearCustomerForm() {
     'customer-account-number',
     'customer-name',
     'customer-meter-number',
-    'customer-meter-size',
-    'customer-meter-type',
+    'meter-size',
+    'meter-type',
+    'service-status',
     'customer-service-address',
     'customer-city',
     'customer-state',
     'customer-zip',
+    'pressure-zone',
+    'route-sequence',
+    'meter-install-date',
     'customer-service-lat',
     'customer-service-lon',
     'customer-meter-lat',
@@ -615,12 +715,13 @@ function clearCustomerForm() {
     'customer-meter-location-note',
     'customer-phone',
     'customer-billing-email',
-    'customer-meter-access-type'
+    'meter-access-type'
   ].forEach((id) => setValue(id, ''));
 
   setValue('customer-dma-id', '');
   setValue('customer-class', 'Residential');
   setValue('customer-account-type', 'Water');
+  setValue('service-status', 'Active');
   setValue('customer-meter-location-status', 'Needs Verification');
 }
 
