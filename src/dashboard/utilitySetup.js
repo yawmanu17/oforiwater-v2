@@ -11,6 +11,8 @@ import { showSuccess, showError } from '../ui/toast.js';
 
 let currentUtility = null;
 let editingDmaId = null;
+let dmaCache = [];
+let editingDmaId = null;
 
 export async function initUtilitySetup(rootId = 'dashboard-module-root') {
   const root = document.getElementById(rootId);
@@ -80,6 +82,9 @@ function render(root, currentUtility) {
       </div>
 
       <button id="save-utility-btn" class="btn-primary">Save Utility Profile</button>
+      <button id="geocode-dma-btn" class="btn-secondary" type="button">
+  Fill Lat/Lon from Address
+</button>
     </section>
 
     <section class="card" style="margin-top:1rem;">
@@ -202,11 +207,11 @@ function wireEvents() {
     .getElementById('utility-secondary-color')
     ?.addEventListener('input', previewTheme);
 
-  document
-    .getElementById('clear-dma-btn')
-    ?.addEventListener('click', () => {
-      clearDmaForm();
-    });
+  document.getElementById('clear-dma-btn')?.addEventListener('click', (event) => {
+  clearDmaForm();
+  setActiveButton('#clear-dma-btn', event.currentTarget);
+  document.getElementById('geocode-dma-btn')?.addEventListener('click', geocodeDmaAddress);
+});
 }
 
 function previewTheme() {
@@ -350,14 +355,23 @@ function clearDmaForm() {
   }
 }
 
+function setActiveButton(selector, activeButton) {
+  document.querySelectorAll(selector).forEach((button) => {
+    button.classList.remove('btn-primary');
+    button.classList.add('btn-secondary');
+  });
+
+  activeButton.classList.remove('btn-secondary');
+  activeButton.classList.add('btn-primary');
+}
+
 async function refreshDmaList() {
   const tbody = document.getElementById('dma-table-body');
-
   if (!tbody) return;
 
-  const dmas = await getDmasByUtility(currentUtility.id);
+  dmaCache = await getDmasByUtility(currentUtility.id);
 
-  if (!dmas.length) {
+  if (!dmaCache.length) {
     tbody.innerHTML = `
       <tr>
         <td colspan="8">No DMAs created yet.</td>
@@ -366,49 +380,25 @@ async function refreshDmaList() {
     return;
   }
 
-  tbody.innerHTML = dmas.map((dma) => `
+  tbody.innerHTML = dmaCache.map((dma) => `
     <tr>
-      <td>
-        <strong>${safe(dma.name || 'Unnamed DMA')}</strong>
-      </td>
-
+      <td><strong>${safe(dma.name || 'Unnamed DMA')}</strong></td>
       <td>${safe(dma.code || '—')}</td>
-
       <td>${safe(dma.city || '—')}</td>
-
       <td>${safe(dma.pressure_zone || '—')}</td>
-
-      <td>
-        <span class="status-badge status-ok">
-          ${safe(dma.status || 'Active')}
-        </span>
-      </td>
-
+      <td><span class="status-badge status-ok">${safe(dma.status || 'Active')}</span></td>
       <td>${safe(dma.dma_type || 'Distribution')}</td>
-
       <td>
-        ${
-          dma.center_lat && dma.center_lon
-            ? `${safe(dma.center_lat)}, ${safe(dma.center_lon)}`
-            : '—'
-        }
+        ${dma.center_lat && dma.center_lon
+          ? `${safe(dma.center_lat)}, ${safe(dma.center_lon)}`
+          : '—'}
       </td>
-
       <td>
         <div class="button-row">
-          <button
-            class="btn-secondary edit-dma-btn"
-            type="button"
-            data-dma-id="${safe(dma.id)}"
-          >
+          <button class="btn-secondary edit-dma-btn" type="button" data-dma-id="${safe(dma.id)}">
             Edit
           </button>
-
-          <button
-            class="btn-secondary boundary-dma-btn"
-            type="button"
-            data-dma-id="${safe(dma.id)}"
-          >
+          <button class="btn-secondary boundary-dma-btn" type="button" data-dma-id="${safe(dma.id)}">
             Boundary
           </button>
         </div>
@@ -416,23 +406,46 @@ async function refreshDmaList() {
     </tr>
   `).join('');
 
-  document.querySelectorAll('.edit-dma-btn')
-    .forEach((button) => {
-      button.addEventListener('click', () => {
-        editDma(button.dataset.dmaId);
-      });
+  document.querySelectorAll('.edit-dma-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      editDma(button.dataset.dmaId);
+      setActiveButton('.edit-dma-btn', button);
     });
+  });
 
-  document.querySelectorAll('.boundary-dma-btn')
-    .forEach((button) => {
-      button.addEventListener('click', () => {
-        alert(
-          'Open the Map tab, click Draw DMA Boundary, then select this DMA.'
-        );
-      });
+  document.querySelectorAll('.boundary-dma-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      alert('Open the Map tab, click Draw DMA Boundary, then select this DMA.');
+      setActiveButton('.boundary-dma-btn', button);
     });
+  });
 }
 
+function editDma(dmaId) {
+  const dma = dmaCache.find((item) => item.id === dmaId);
+
+  if (!dma) {
+    alert('DMA record not found.');
+    return;
+  }
+
+  editingDmaId = dma.id;
+
+  setValue('dma-name', dma.name || '');
+  setValue('dma-code', dma.code || '');
+  setValue('dma-type', dma.dma_type || 'Distribution');
+  setValue('dma-status', dma.status || 'Active');
+  setValue('dma-city', dma.city || '');
+  setValue('dma-state', dma.state || '');
+  setValue('dma-zip', dma.zip || '');
+  setValue('dma-pressure-zone', dma.pressure_zone || '');
+  setValue('dma-center-lat', dma.center_lat || '');
+  setValue('dma-center-lon', dma.center_lon || '');
+
+  const saveBtn = document.getElementById('save-dma-btn');
+  if (saveBtn) saveBtn.textContent = 'Update DMA';
+}
+  
 function fillDmaForm(dma) {
   editingDmaId = dma.id;
 
@@ -451,6 +464,56 @@ setValue('dma-status', dma.status || 'Active');
   if (saveBtn) saveBtn.textContent = 'Update DMA';
 
   document.getElementById('dma-name')?.focus();
+}
+
+async function geocodeDmaAddress() {
+  const city = val('dma-city');
+  const state = val('dma-state');
+  const zip = val('dma-zip');
+
+  const utilityAddress = val('utility-address');
+
+  const query = [
+    utilityAddress,
+    city,
+    state,
+    zip
+  ].filter(Boolean).join(', ');
+
+  if (!query) {
+    alert('Enter city, state, ZIP, or utility address first.');
+    return;
+  }
+
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+
+    const response = await fetch(url);
+    const results = await response.json();
+
+    if (!results.length) {
+      alert('Could not find coordinates for this address.');
+      return;
+    }
+
+    setValue('dma-center-lat', results[0].lat);
+    setValue('dma-center-lon', results[0].lon);
+
+    alert('Latitude and longitude filled.');
+  } catch (error) {
+    console.error('Geocoding failed:', error);
+    alert('Could not geocode address.');
+  }
+}
+
+function setValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+function val(id) {
+  return document.getElementById(id)?.value?.trim() || '';
 }
 
 function val(id) {
