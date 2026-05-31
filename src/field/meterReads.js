@@ -18,6 +18,7 @@ import {
 import { logAuditEvent } from '../audit/logAuditEvent.js';
 import { uploadMeterReadPhoto } from '../supabase/storage.js';
 import { showSuccess, showWarning, showError } from '../ui/toast.js';
+import { validateMeterRead } from './meterReadValidationEngine.js';
 
 
 const GAL_PER_CCF = 748;
@@ -313,46 +314,65 @@ function historyHtml() {
 }
 
 function wireEvents() {
-  document.getElementById('field-customer')?.addEventListener('change', handleCustomerChange);
-  document.getElementById('field-current-reading')?.addEventListener('input', updateUsagePreview);
-  document.getElementById('field-previous-reading')?.addEventListener('input', updateUsagePreview);
-  document.getElementById('field-unit')?.addEventListener('change', updateUsagePreview);
- 
-  document.getElementById('field-meter-photo')
-  ?.addEventListener('change', previewMeterPhoto);
+  document
+    .getElementById('field-customer')
+    ?.addEventListener('change', handleCustomerChange);
 
-document.getElementById('retake-photo-btn')
-  ?.addEventListener('click', retakePhoto);
+  document
+    .getElementById('field-current-reading')
+    ?.addEventListener('input', updateUsagePreview);
 
-  document.getElementById('field-capture-gps-btn')
-  ?.addEventListener('click', async (event) => {
-    setFieldButtonActive(event.currentTarget);
-    await captureGps();
-  });
+  document
+    .getElementById('field-previous-reading')
+    ?.addEventListener('input', updateUsagePreview);
 
-document.getElementById('field-save-btn')
-  ?.addEventListener('click', async (event) => {
-    setFieldButtonActive(event.currentTarget);
-    await saveRead(false);
-  });
+  document
+    .getElementById('field-unit')
+    ?.addEventListener('change', updateUsagePreview);
 
-document.getElementById('field-save-next-btn')
-  ?.addEventListener('click', async (event) => {
-    setFieldButtonActive(event.currentTarget);
-    await saveRead(true);
-  });
+  document
+    .getElementById('field-meter-photo')
+    ?.addEventListener('change', previewMeterPhoto);
 
-document.getElementById('field-clear-btn')
-  ?.addEventListener('click', (event) => {
-    setFieldButtonActive(event.currentTarget);
-    clearReadFields();
-  });
+  document
+    .getElementById('retake-photo-btn')
+    ?.addEventListener('click', retakePhoto);
 
-document.getElementById('field-navigate-btn')
-  ?.addEventListener('click', (event) => {
-    setFieldButtonActive(event.currentTarget);
-    navigateToCustomer();
-  });
+  document
+    .getElementById('field-capture-gps-btn')
+    ?.addEventListener('click', async (event) => {
+      setFieldButtonActive(event.currentTarget);
+      await captureGps();
+    });
+
+  document
+    .getElementById('field-save-btn')
+    ?.addEventListener('click', async (event) => {
+      setFieldButtonActive(event.currentTarget);
+      await saveRead(false);
+    });
+
+  document
+    .getElementById('field-save-next-btn')
+    ?.addEventListener('click', async (event) => {
+      setFieldButtonActive(event.currentTarget);
+      await saveRead(true);
+    });
+
+  document
+    .getElementById('field-clear-btn')
+    ?.addEventListener('click', (event) => {
+      setFieldButtonActive(event.currentTarget);
+      clearReadFields();
+    });
+
+  document
+    .getElementById('field-navigate-btn')
+    ?.addEventListener('click', (event) => {
+      setFieldButtonActive(event.currentTarget);
+      navigateToCustomer();
+    });
+}
 
 function setFieldButtonActive(activeButton) {
   document
@@ -364,6 +384,31 @@ function setFieldButtonActive(activeButton) {
 
   activeButton.classList.remove('btn-secondary');
   activeButton.classList.add('btn-primary');
+}
+
+function previewMeterPhoto(event) {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  const preview = document.getElementById('meter-photo-preview');
+
+  if (!preview) return;
+
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+}
+
+function retakePhoto() {
+  const fileInput = document.getElementById('field-meter-photo');
+  const preview = document.getElementById('meter-photo-preview');
+
+  if (fileInput) fileInput.value = '';
+
+  if (preview) {
+    preview.src = '';
+    preview.style.display = 'none';
+  }
 }
 
 function handleCustomerChange() {
@@ -412,33 +457,6 @@ function updateUsagePreview() {
     'field-usage-preview',
     `${usageCcf.toFixed(2)} CCF / ${Math.round(usageGal).toLocaleString()} gal`
   );
-}
-
-function previewMeterPhoto(event) {
-  const file = event.target.files?.[0];
-
-  if (!file) return;
-
-  const preview =
-    document.getElementById('meter-photo-preview');
-
-  preview.src = URL.createObjectURL(file);
-  preview.style.display = 'block';
-}
-
-function retakePhoto() {
-  const fileInput =
-    document.getElementById('field-meter-photo');
-
-  const preview =
-    document.getElementById('meter-photo-preview');
-
-  if (fileInput) fileInput.value = '';
-
-  if (preview) {
-    preview.src = '';
-    preview.style.display = 'none';
-  }
 }
 
 async function captureGps() {
@@ -546,7 +564,7 @@ async function saveRead(moveNext = false) {
     return;
   }
 
-  const previous = numberOrZero(val('field-previous-reading'));
+const previous = numberOrZero(val('field-previous-reading'));
 const current = numberOrZero(val('field-current-reading'));
 const unit = val('field-unit') || 'CCF';
 
@@ -589,44 +607,79 @@ try {
       ? adjustedUsage
       : adjustedUsage * GAL_PER_CCF;
 
-  const payload = {
-    utility_id: utility.id,
-    customer_id: selectedCustomer.id,
+ const validation = validateMeterRead({
+  previous,
+  current,
+  usageCcf,
+  selectedCustomer,
+  exceptionCode: val('field-exception-code'),
+  capturedGps,
+  photoUrl,
+  readType: val('field-read-type') || 'actual'
+});
 
-    account_number: selectedCustomer.account_number || null,
-    service_id: selectedCustomer.service_id || null,
-    meter_number: selectedCustomer.meter_number || null,
+if (validation.isBlocked) {
+  showError(
+    validation.issues
+      .map((item) => item.message)
+      .join('\n')
+  );
+  return;
+}
 
-    billing_month: val('field-billing-month') || currentMonth(),
-    reading_date: val('field-reading-date') || todayDate(),
+if (validation.issues.length) {
+  console.warn('Meter read validation warnings:', validation.issues);
+}
 
-    previous_read: previous,
-    current_read: current,
+const payload = {
+  utility_id: utility.id,
+  customer_id: selectedCustomer.id,
 
-    reading_unit: unit,
-    usage_ccf: usageCcf,
-    usage_gal: usageGal,
+  account_number: selectedCustomer.account_number || null,
+  service_id: selectedCustomer.service_id || null,
+  meter_number: selectedCustomer.meter_number || null,
 
-    read_type: val('field-read-type') || 'actual',
-    exception_code: val('field-exception-code') || null,
-    notes: val('field-notes') || null,
+  billing_month: val('field-billing-month') || currentMonth(),
+  reading_date: val('field-reading-date') || todayDate(),
 
-    gps_lat: capturedGps?.lat || null,
-    gps_lon: capturedGps?.lon || null,
-    gps_accuracy_m: capturedGps?.accuracy || null,
+  previous_read: previous,
+  current_read: current,
 
-    reader_id: authState.user?.id || null,
+  reading_unit: unit,
+  usage_ccf: usageCcf,
+  usage_gal: usageGal,
 
-    photo_url: photoUrl || null,
-    photo_note: val('field-photo-note') || null
-  };
+  read_type: val('field-read-type') || 'actual',
+  exception_code: val('field-exception-code') || null,
+  notes: val('field-notes') || null,
 
+  gps_lat: capturedGps?.lat || null,
+  gps_lon: capturedGps?.lon || null,
+  gps_accuracy_m: capturedGps?.accuracy || null,
+
+  reader_id: authState.user?.id || null,
+
+  photo_url: photoUrl || null,
+  photo_note: val('field-photo-note') || null
+};
+
+// ADD THESE HERE
+payload.raw_usage = rawUsage;
+payload.adjusted_usage = adjustedUsage;
+payload.meter_multiplier = multiplier;
+payload.register_factor = registerFactor;
+
+// THEN SAVE
 if (!navigator.onLine) {
   await savePendingRead(payload);
 
-  showWarning('Device is offline. Meter read saved locally and will sync later.');
+  showWarning(
+    'Device is offline. Meter read saved locally and will sync later.'
+  );
   return;
 }
+
+await createMeterRead(payload);
 
     const read = await saveMeterRead(payload);
 
