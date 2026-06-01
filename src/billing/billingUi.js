@@ -39,7 +39,6 @@ function render(root) {
     <section class="module-page">
       <div class="module-toolbar">
         <div class="module-title-block">
-          <div class="module-eyebrow">Billing & Revenue</div>
           <h2>Billing Configuration</h2>
           <p>Create billing profiles, calculate bills from meter reads, and generate receipts.</p>
         </div>

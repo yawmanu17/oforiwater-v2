@@ -11,6 +11,7 @@ import {
 } from '../supabase/assets.js';
 import { getCurrentGpsPosition } from '../gis/geocode.js';
 import { showSuccess, showError, showWarning } from '../ui/toast.js';
+import { importAssetCsv } from '../assets/assetImportUi.js';
 
 let dmas = [];
 
@@ -51,6 +52,18 @@ function render(root) {
           Saved Assets
         </button>
       </div>
+      <div class="button-row" style="margin-top:1rem;">
+  <label class="btn-secondary" style="display:inline-flex;align-items:center;gap:.5rem;">
+    Import Asset CSV
+    <input id="asset-import-file" type="file" accept=".csv" hidden />
+  </label>
+
+  <button id="import-assets-btn" class="btn-secondary" type="button">
+    Process Import
+  </button>
+</div>
+
+<div id="asset-import-summary-root"></div>
     </section>
 
     <section id="asset-section-master" class="asset-section card section-card">
@@ -303,6 +316,10 @@ function wireEvents() {
       setActiveActionButton(event.currentTarget);
       clearPipelineForm();
     });
+
+    document
+  .getElementById('import-assets-btn')
+  ?.addEventListener('click', handleAssetImport);
 }
 
 function wireAssetTabs() {
@@ -321,6 +338,19 @@ function wireAssetTabs() {
       });
     });
   });
+}
+
+async function handleAssetImport() {
+  const file = document.getElementById('asset-import-file')?.files?.[0];
+
+  if (!file) {
+    showWarning('Select an asset CSV file first.');
+    return;
+  }
+
+  const result = await importAssetCsv(file);
+
+  renderAssetImportSummary(result);
 }
 
 async function captureMasterMeterGps() {
@@ -431,6 +461,64 @@ async function refreshAssetLists() {
   renderMasterMeterList(masterMeters);
   renderPipelineList(pipelines);
   wireAssetListActions();
+}
+
+function renderAssetImportSummary(result) {
+  const root = document.getElementById('asset-import-summary-root');
+
+  if (!root || !result) return;
+
+  const { assets, quality, riskMatrix } = result;
+
+  const highRisk = riskMatrix.filter((item) =>
+    ['Immediate', 'High'].includes(item.priority)
+  ).length;
+
+  root.innerHTML = `
+    <section class="module-panel" style="margin-top:1rem;">
+      <h3 class="module-panel-title">Asset Import Summary</h3>
+
+      <div class="module-kpis">
+        ${kpiCard('Imported Assets', assets.length)}
+        ${kpiCard('Quality Score', `${quality.quality_score}%`)}
+        ${kpiCard('Missing GPS', quality.missing_gps)}
+        ${kpiCard('Missing DMA', quality.missing_dma)}
+        ${kpiCard('High Risk Assets', highRisk)}
+      </div>
+
+      <div class="module-table-wrap">
+        <table class="table-clean">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Type</th>
+              <th>Name</th>
+              <th>DMA</th>
+              <th>Risk</th>
+              <th>Priority</th>
+              <th>Replacement Cost</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${riskMatrix.slice(0, 15).map((item) => `
+              <tr>
+                <td>${safe(item.asset_id || '—')}</td>
+                <td>${safe(item.asset_type || '—')}</td>
+                <td>${safe(item.asset_name || '—')}</td>
+                <td>${safe(
+                  assets.find((asset) => asset.asset_id === item.asset_id)?.dma_code || '—'
+                )}</td>
+                <td>${safe(item.risk_score)}</td>
+                <td>${safe(item.priority)}</td>
+                <td>$${Math.round(Number(item.replacement_cost || 0)).toLocaleString()}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
 }
 
 function assetKpisHtml(masterMeters = [], pipelines = []) {

@@ -16,7 +16,6 @@ export async function initImportExportUi(rootId = 'dashboard-module-root') {
     <section class="card section-card">
       <div class="module-header">
         <div>
-          <div class="module-eyebrow">Data Management</div>
           <h2>Import / Export</h2>
           <p>Load customer datasets, meter GPS locations, DMA assignments, and export operational records.</p>
         </div>

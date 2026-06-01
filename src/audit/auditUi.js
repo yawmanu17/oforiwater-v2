@@ -17,7 +17,6 @@ export async function initAuditUi(rootId = 'dashboard-module-root') {
     <section class="module-page">
       <div class="module-toolbar">
         <div class="module-title-block">
-          <div class="module-eyebrow">Governance & Traceability</div>
           <h2>Audit Logs</h2>
           <p>
             Review platform activity across staff, customers, billing, GIS, utility setup, and security events.

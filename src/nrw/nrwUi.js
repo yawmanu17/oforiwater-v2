@@ -63,7 +63,6 @@ function render(root, billingMonth) {
     <section class="module-page">
       <div class="module-toolbar">
         <div class="module-title-block">
-          <div class="module-eyebrow">Water Loss Intelligence</div>
           <h2>NRW Analytics</h2>
           <p>
             Analyze NRW, apparent losses, real losses, ILI, CRLI estimates,
